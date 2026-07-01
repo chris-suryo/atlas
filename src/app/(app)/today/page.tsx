@@ -2,7 +2,9 @@ import { getActiveWorkout, getExercises, getHistory } from "@/lib/data/log";
 import {
   getAnkleRecent,
   getRecoveryLatest,
+  getRecoverySeries,
   getWeeklyMileage,
+  getWhoopStatus,
 } from "@/lib/data/today";
 import { ensureSeeded } from "@/lib/actions/seed";
 import { suggestNext, toSuggestExercise } from "@/lib/suggest";
@@ -15,15 +17,25 @@ export const metadata = { title: "Today" };
 
 export default async function TodayPage() {
   await ensureSeeded(); // first-run safety net (idempotent)
-  const [exercises, history, active, recovery, ankleRecent, buckets] =
-    await Promise.all([
-      getExercises(),
-      getHistory(),
-      getActiveWorkout(),
-      getRecoveryLatest(),
-      getAnkleRecent(),
-      getWeeklyMileage(),
-    ]);
+  const [
+    exercises,
+    history,
+    active,
+    recovery,
+    recoverySeries,
+    whoop,
+    ankleRecent,
+    buckets,
+  ] = await Promise.all([
+    getExercises(),
+    getHistory(),
+    getActiveWorkout(),
+    getRecoveryLatest(),
+    getRecoverySeries(),
+    getWhoopStatus(),
+    getAnkleRecent(),
+    getWeeklyMileage(),
+  ]);
 
   const todayISO = new Date().toLocaleDateString("en-CA");
   const focusMeta = computeFocusMeta(exercises, history.last);
@@ -41,7 +53,9 @@ export default async function TodayPage() {
       ),
       categoryLoad: history.categoryLoad,
     },
-    recovery: null,
+    // WHOOP live: feed the real recovery score so the readiness modifier kicks in
+    // (engine deloads <34 / pushes ≥67). Null until connected → shell behavior.
+    recovery: recovery?.recovery_pct != null ? { score: recovery.recovery_pct } : null,
     todayISO,
     limit: 8,
   });
@@ -57,6 +71,8 @@ export default async function TodayPage() {
   return (
     <TodayScreen
       recovery={recovery}
+      recoverySeries={recoverySeries}
+      whoop={whoop}
       ankleRecent={ankleRecent}
       buckets={buckets}
       daysLeft={daysUntilRace(todayISO)}

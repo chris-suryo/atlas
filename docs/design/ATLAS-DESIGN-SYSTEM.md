@@ -257,8 +257,9 @@ The plan-first lifecycle is persisted so a session survives reload/background:
 - Fuel → CalTrak daily total (read-only; fast-follow).
 
 ### Build split
-- **M1 core (built):** the full layout with the **shell state** — rings in "connect WHOOP" empty state, recovery-vs-strain empty, rule-based recommendation, tappable ankle ring → `ankle_logs`, weekly-mileage chart from `runs`, countdown, Start pre-seeds Log. No new WHOOP dependency.
-- **Fast-follow:** ring detail pages; recovery-vs-strain + rings populated (after WHOOP ingest); CalTrak Fuel link; recovery modifier on the recommendation.
+- **M1 core (built):** the full layout with the **shell state** — rings in "connect WHOOP" empty state, recovery-vs-strain empty, rule-based recommendation, tappable ankle ring → `ankle_logs`, weekly-mileage chart from `runs`, countdown, Start pre-seeds Log.
+- **WHOOP ingest (built — the MVP unlock):** OAuth connect + rotating-refresh token store + daily cron/manual Sync/Disconnect (see the ingest spec) populate the `recovery` table → **rings + recovery-vs-strain trend go live** and the §7.3 **recovery modifier** turns on. Empty "Connect WHOOP" state remains until connected.
+- **Fast-follow:** ring detail pages; CalTrak Fuel link; WHOOP webhooks (real-time) + run→import + body-weight.
 
 ---
 

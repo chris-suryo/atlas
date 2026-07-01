@@ -68,6 +68,15 @@ Full plan: `/root/.claude/plans/project-atlas-a-sparkling-newt.md`.
   target) + race countdown. Race date + weekly target = `src/lib/config/running.ts` (no DB).
   **Fuel** is a static stub. All hand-rolled inline-SVG rings/charts, tokens only. `getHistory`
   is reused; `getWeeklyMileage`/`getRecoveryLatest`/`getAnkleRecent` in `src/lib/data/today.ts`.
+- **WHOOP ingest (LIVE, §7.6/§7.7 unlock):** OAuth connect (`/api/whoop/authorize` → `/callback`,
+  CSRF state cookie), **rotating-refresh** token store (`ensureValidToken` in `src/lib/whoop/token.ts`,
+  compare-and-swap on the old refresh token), fetch+map recovery·sleep·cycle → the `recovery` table
+  **anchored to the Boston-local date of the WHOOP cycle start** (`assembleRecoveryRows`, pure/tested;
+  `src/lib/whoop/{api,sync}.ts`). Today rings + recovery-vs-strain trend go live from `recovery`; the
+  §7.3 engine's `recovery` param is now the real score (readiness modifier on). Freshness = daily
+  **Vercel Cron** `/api/cron/whoop` (guarded by `CRON_SECRET`, `vercel.json` `0 12 * * *`) + a manual
+  **Sync** + **Disconnect** on Today. Tokens live in `whoop_connection` (service-role only, via
+  `src/lib/supabase/admin.ts`). Public `/privacy` page. **Webhooks/run-import/body-weight = fast-follow.**
 - Trends is a placeholder this milestone.
 
 ## Stack gotchas
@@ -80,10 +89,10 @@ Full plan: `/root/.claude/plans/project-atlas-a-sparkling-newt.md`.
 - Dark theme only; iPhone safe-area insets respected.
 
 ## Data model
-9 tables, all with `user_id` + owner-only RLS and `updated_at` (moddatetime) triggers:
+10 tables, all with `user_id` + owner-only RLS and `updated_at` (moddatetime) triggers:
 `exercises`, `workouts`, `workout_sets`, `runs`, `body_metrics`, `ankle_logs`, `goals`,
-`recovery` (stub; the future WHOOP sink), `workout_exercises` (the plan queue). See
-`supabase/README.md`.
+`recovery` (the WHOOP sink — now fed by ingest), `workout_exercises` (the plan queue),
+`whoop_connection` (OAuth tokens; service-role only). See `supabase/README.md`.
 - **`workouts.focus`** (nullable `push|pull|legs|core|mobility|run|anything`) records the
   session's intent for Trends balance-over-time; set on workout creation. Migration
   `20260701000004_workout_focus.sql` (`anything` = stored freeform, distinct from NULL).
@@ -100,6 +109,10 @@ Full plan: `/root/.claude/plans/project-atlas-a-sparkling-newt.md`.
 - **`exercises.muscle`** (nullable text; single primary mover, 14 buckets) powers the
   suggestion engine's muscle-gap signal. Migration `20260701000007_exercise_muscle.sql`;
   also in `seed-data.ts`/`seed.sql`.
+- **`whoop_connection`** (`user_id` PK, `access_token`, `refresh_token`, `expires_at`,
+  `scope`, `whoop_user_id`, `last_synced_at`, …) = WHOOP OAuth token store, one row/user.
+  Owner-only RLS but **all access is via the service-role admin client** (tokens never reach
+  the browser). Migration `20260701000008_whoop_connection.sql`.
 
 ## Commands
 ```bash
@@ -123,3 +136,8 @@ node scripts/generate-icons.mjs   # regenerate PWA icons
 - **Deploy:** Vercel via GitHub repo import; set Production Branch to the feature
   branch. Live at https://atlas-puce-gamma.vercel.app. Email+password needs no
   redirect-URL config (Site URL only matters if magic links are re-enabled).
+- **WHOOP (Vercel env, server-only, NOT committed):** `WHOOP_CLIENT_ID`,
+  `WHOOP_CLIENT_SECRET`, `WHOOP_REDIRECT_URI` (=`…/api/whoop/callback`),
+  `SUPABASE_SERVICE_ROLE_KEY`, and **`CRON_SECRET`** (guards `/api/cron/whoop`; Vercel sends it
+  as `Authorization: Bearer …`). OAuth only works on the deployed URL (fixed redirect URI).
+  Daily cron `0 12 * * *` UTC ≈ 8am ET (Hobby = daily only; drifts 1h across DST).

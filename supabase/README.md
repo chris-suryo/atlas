@@ -13,6 +13,8 @@ Apply the migrations in filename order, then the seed.
    backfill of the 45 seeded rows (Picker groups Main lifts above Accessories)
 7. `migrations/20260701000007_exercise_muscle.sql` — `exercises.muscle` (primary mover) +
    backfill of the 45 seeded rows (suggestion engine's muscle-gap signal, §7.3)
+8. `migrations/20260701000008_whoop_connection.sql` — `whoop_connection` OAuth token store
+   (one row/user, owner-only RLS + `updated_at` trigger; service-role access for background jobs)
 
 ## Seed
 - `seed.sql` — 45 exercises with aliases.

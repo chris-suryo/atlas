@@ -26,12 +26,18 @@ export default function Ring({
   const c = 2 * Math.PI * r;
   const p = Math.max(0, Math.min(1, progress));
   const dash = p * c;
+  const m = 3; // viewBox margin so round stroke caps never clip at a scroll edge
   const toneClass =
     tone === "accent" ? "text-accent" : tone === "faint" ? "text-text-faint" : "text-text";
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+      <svg
+        width={size}
+        height={size}
+        viewBox={`${-m} ${-m} ${size + 2 * m} ${size + 2 * m}`}
+        className="-rotate-90"
+      >
         <circle
           cx={size / 2}
           cy={size / 2}

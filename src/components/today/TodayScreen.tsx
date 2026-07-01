@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { localDateISO } from "@/app/(app)/log/util";
 import type { Focus } from "@/app/(app)/log/types";
 import type { WeekBucket } from "@/lib/config/running";
-import type { AnkleDay, RecoveryRow } from "@/lib/data/today";
+import type {
+  AnkleDay,
+  RecoveryPoint,
+  RecoveryRow,
+  WhoopStatus,
+} from "@/lib/data/today";
 import { logAnklePain } from "@/app/(app)/today/actions";
 import WhoopRings from "./WhoopRings";
 import RecoveryStrainTrend from "./RecoveryStrainTrend";
@@ -35,9 +40,19 @@ function dateLabel(): string {
     day: "numeric",
   });
 }
+function syncedAgo(iso: string): string {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 1) return "synced just now";
+  if (mins < 60) return `synced ${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `synced ${hrs}h ago`;
+  return `synced ${Math.round(hrs / 24)}d ago`;
+}
 
 export default function TodayScreen({
   recovery,
+  recoverySeries,
+  whoop,
   ankleRecent,
   buckets,
   daysLeft,
@@ -45,6 +60,8 @@ export default function TodayScreen({
   activeFocus,
 }: {
   recovery: RecoveryRow | null;
+  recoverySeries: RecoveryPoint[];
+  whoop: WhoopStatus;
   ankleRecent: AnkleDay[];
   buckets: WeekBucket[];
   daysLeft: number;
@@ -86,14 +103,14 @@ export default function TodayScreen({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-start justify-between px-7 pt-[max(1.25rem,env(safe-area-inset-top))]">
+      <div className="flex shrink-0 items-start justify-between px-7 pt-[max(1.25rem,env(safe-area-inset-top))]">
         {activeFocus ? (
           <button
             type="button"
             onClick={() => router.push("/log")}
             className="text-left"
           >
-            <span className="text-[22px] font-medium tracking-tight">Resume workout</span>
+            <span className="text-[17px] font-medium tracking-tight">Resume workout</span>
             <span className="block text-xs text-text-faint">
               {LABEL[activeFocus]} in progress
             </span>
@@ -104,14 +121,34 @@ export default function TodayScreen({
             <p className="text-xs text-text-faint">{date}</p>
           </div>
         )}
-        <span className="pt-1 text-[11px] text-text-faint">
-          {recovery ? "synced" : "Connect WHOOP"}
-        </span>
+        {whoop.connected ? (
+          <form action="/api/whoop/sync" method="post" className="pt-1 text-right">
+            <button type="submit" className="text-[11px] text-accent">
+              Sync
+            </button>
+            {whoop.lastSyncedAt && (
+              <span className="block text-[10px] text-text-faint">
+                {syncedAgo(whoop.lastSyncedAt)}
+              </span>
+            )}
+          </form>
+        ) : (
+          <a href="/api/whoop/authorize" className="pt-1 text-[11px] text-accent">
+            Connect WHOOP
+          </a>
+        )}
       </div>
 
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-7 py-4">
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-7 pb-4 pt-3">
         <WhoopRings recovery={recovery} />
-        <RecoveryStrainTrend connected={!!recovery} />
+        <RecoveryStrainTrend points={recoverySeries} connected={whoop.connected} />
+        {whoop.connected && (
+          <form action="/api/whoop/disconnect" method="post" className="-mt-3 text-center">
+            <button type="submit" className="text-[10px] text-text-faint">
+              Disconnect WHOOP
+            </button>
+          </form>
+        )}
         <FuelBar />
         <div className="flex items-start justify-between gap-4">
           <Recommendation

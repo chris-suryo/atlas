@@ -32,6 +32,37 @@ export async function getRecoveryLatest(): Promise<RecoveryRow | null> {
   return (data as RecoveryRow | null) ?? null;
 }
 
+export type RecoveryPoint = {
+  date: string;
+  recovery_pct: number | null;
+  strain: number | null;
+};
+
+/** 14-day recovery + strain series for the recovery-vs-strain trend (§7.7). */
+export async function getRecoverySeries(days = 14): Promise<RecoveryPoint[]> {
+  const supabase = await createClient();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("recovery")
+    .select("date, recovery_pct, strain")
+    .gte("date", daysAgoISO(days))
+    .order("date", { ascending: true });
+  return (data ?? []) as RecoveryPoint[];
+}
+
+export type WhoopStatus = { connected: boolean; lastSyncedAt: string | null };
+
+/** Whether WHOOP is connected + when it last synced (owner-RLS read; no tokens). */
+export async function getWhoopStatus(): Promise<WhoopStatus> {
+  const supabase = await createClient();
+  if (!supabase) return { connected: false, lastSyncedAt: null };
+  const { data } = await supabase
+    .from("whoop_connection")
+    .select("last_synced_at")
+    .maybeSingle();
+  return { connected: !!data, lastSyncedAt: data?.last_synced_at ?? null };
+}
+
 export type AnkleDay = { date: string; pain_0_10: number | null };
 
 /** Recent ankle-pain logs (for today's value + a short rolling average). */

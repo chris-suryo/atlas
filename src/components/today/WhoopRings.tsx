@@ -47,9 +47,12 @@ export default function WhoopRings({ recovery }: { recovery: RecoveryRow | null 
             </Cell>
           ))}
         </div>
-        <p className="mt-2 text-center text-[11px] text-text-faint">
+        <a
+          href="/api/whoop/authorize"
+          className="mt-2 block text-center text-[11px] text-accent"
+        >
           Connect WHOOP to see sleep, recovery &amp; strain
-        </p>
+        </a>
       </div>
     );
   }

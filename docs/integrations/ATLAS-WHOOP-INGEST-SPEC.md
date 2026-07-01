@@ -4,6 +4,14 @@
 
 Host: **Vercel** (route handlers + Vercel Cron), tokens in Supabase. Same repo as the app.
 
+> **Build status (M1 ingest — SHIPPED):** OAuth connect (`/api/whoop/authorize`+`/callback`),
+> rotating-refresh token store (`whoop_connection`, migration `…0008`), fetch+map
+> recovery·sleep·cycle → `recovery` **anchored to the Boston-local cycle-start date**
+> (`src/lib/whoop/*`), a **daily** Vercel Cron (`/api/cron/whoop`, `CRON_SECRET`) + manual
+> **Sync**/**Disconnect**, and Today's rings/trend + the §7.3 recovery modifier now live.
+> Local-day anchoring and the v2 `start`/`nextToken` params were filled in (the spec left them
+> undefined). **Fast-follow (not built):** §5 webhooks, run→import, body-weight, ring detail pages.
+
 ---
 
 ## 0. Prerequisites (human step — Chris only)
