@@ -6,6 +6,9 @@ Apply the migrations in filename order, then the seed.
 1. `migrations/20260701000001_init_schema.sql` — extensions + 8 tables
 2. `migrations/20260701000002_rls.sql` — RLS enabled + owner-only policies
 3. `migrations/20260701000003_triggers_indexes.sql` — `updated_at` triggers + indexes
+4. `migrations/20260701000004_workout_focus.sql` — nullable `workouts.focus` (session intent)
+5. `migrations/20260701000005_workout_lifecycle.sql` — `workouts.finished_at` + one-active
+   guard; `workout_exercises` (the ordered, statused plan queue) with RLS + `updated_at` trigger
 
 ## Seed
 - `seed.sql` — 45 exercises with aliases.

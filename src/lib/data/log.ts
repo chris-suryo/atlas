@@ -1,6 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ExerciseLite } from "@/lib/parser";
+import type { ActiveWorkout, Focus, QueueItem } from "@/app/(app)/log/types";
 import type { LastPerf, SetShape } from "./types";
+
+const STRENGTH_FOCUS = new Set<Focus>([
+  "push",
+  "pull",
+  "legs",
+  "core",
+  "mobility",
+  "anything",
+]);
 
 function fmtWeight(w: number | null): string {
   return w == null ? "BW" : String(w);
@@ -99,4 +109,72 @@ export async function getHistory(): Promise<History> {
   for (const id of Object.keys(seenWorkouts)) sessions[id] = seenWorkouts[id].size;
 
   return { last, sessions };
+}
+
+type WorkoutExerciseRow = {
+  id: string;
+  exercise_id: string;
+  status: "queued" | "done";
+  exercises: ExerciseLite | ExerciseLite[] | null;
+};
+
+/**
+ * The user's one unfinished workout (finished_at IS NULL), rebuilt for resume:
+ * its ordered plan queue (workout_exercises) plus the sets logged so far
+ * (workout_sets, grouped by exercise). Returns null when nothing is in progress
+ * — the Log screen then shows Focus. Runs are one-shot (saveRun closes them), so
+ * they never resurface here.
+ */
+export async function getActiveWorkout(): Promise<ActiveWorkout | null> {
+  const supabase = await createClient();
+  if (!supabase) return null;
+
+  const { data: w } = await supabase
+    .from("workouts")
+    .select("id, focus, started_at")
+    .is("finished_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!w || !w.focus || !STRENGTH_FOCUS.has(w.focus as Focus)) return null;
+
+  const { data: weData } = await supabase
+    .from("workout_exercises")
+    .select(
+      "id, exercise_id, status, exercises!inner(id, name, aliases, is_anchor, default_unit, category)",
+    )
+    .eq("workout_id", w.id)
+    .order("order_index");
+  const weRows = (weData ?? []) as unknown as WorkoutExerciseRow[];
+
+  const { data: setData } = await supabase
+    .from("workout_sets")
+    .select("weight_lbs, reps, rpe, exercise_id, set_index")
+    .eq("workout_id", w.id)
+    .order("set_index");
+  const byExercise: Record<string, SetShape[]> = {};
+  for (const s of setData ?? []) {
+    (byExercise[s.exercise_id] ??= []).push({
+      weight_lbs: s.weight_lbs,
+      reps: s.reps,
+      rpe: s.rpe,
+    });
+  }
+
+  const queue: QueueItem[] = weRows.map((r) => {
+    const ex = Array.isArray(r.exercises) ? r.exercises[0] : r.exercises;
+    return {
+      rowId: r.id,
+      exercise: ex as ExerciseLite,
+      status: r.status,
+      sets: byExercise[r.exercise_id] ?? [],
+    };
+  });
+
+  return {
+    id: w.id,
+    focus: w.focus as Focus,
+    started: w.started_at != null,
+    queue,
+  };
 }

@@ -35,7 +35,15 @@ Full plan: `/root/.claude/plans/project-atlas-a-sparkling-newt.md`.
   (queued/now/done) + `+ Add` + quiet Finish (→ recap). Plan/Now lives inside the Log tab;
   global nav stays Today·Log·Trends.
   - **M1 core:** Focus → Picker → Session[Now] keypad → save + inline "last: W×R×S".
-  - **Fast-follow:** rest timer, "Up next" suggestions (§7.3), drag-to-reorder.
+  - **Plan v2 (DB-persistent, plan-first):** the whole session lives in the DB, so it
+    **resumes** after reload/app-switch. On Log load, an unfinished workout
+    (`finished_at IS NULL`) opens straight into **Plan**; Focus shows only when none is
+    active. `+ Add` **stays in Plan** (queue several before starting); rows **drag to
+    reorder** (`@dnd-kit`, `order_index` persisted). **Start workout** stamps `started_at`
+    → Now; **Finish exercise** flips `workout_exercises.status` → `done`; **Finish
+    workout** stamps `finished_at` → recap → Today. Migration
+    `20260701000005_workout_lifecycle.sql`.
+  - **Fast-follow (done):** rest timer, drag-to-reorder. **Up next** (§7.3) still pending.
 - **Runs:** Focus **Run** row = "Import from WHOOP" (§7.6) — **routed to a minimal manual
   run form placeholder** until the WHOOP ingest session. Objective fields come from WHOOP's
   workout API (§7.4); subjective ankle fields stay manual. Spec:
@@ -52,12 +60,19 @@ Full plan: `/root/.claude/plans/project-atlas-a-sparkling-newt.md`.
 - Dark theme only; iPhone safe-area insets respected.
 
 ## Data model
-8 tables, all with `user_id` + owner-only RLS and `updated_at` (moddatetime) triggers:
+9 tables, all with `user_id` + owner-only RLS and `updated_at` (moddatetime) triggers:
 `exercises`, `workouts`, `workout_sets`, `runs`, `body_metrics`, `ankle_logs`, `goals`,
-`recovery` (stub; the future WHOOP sink). See `supabase/README.md`.
+`recovery` (stub; the future WHOOP sink), `workout_exercises` (the plan queue). See
+`supabase/README.md`.
 - **`workouts.focus`** (nullable `push|pull|legs|core|mobility|run|anything`) records the
   session's intent for Trends balance-over-time; set on workout creation. Migration
   `20260701000004_workout_focus.sql` (`anything` = stored freeform, distinct from NULL).
+- **`workouts.finished_at`** (nullable) closes a session; NULL = in progress. A partial
+  unique index on `(user_id) where finished_at is null` allows **one open workout** at a
+  time (the resume anchor). `started_at` = when Start was tapped.
+- **`workout_exercises`** = the ordered plan queue: `workout_id` (fk cascade), `exercise_id`
+  (fk restrict), `order_index`, `status ∈ {queued,done}`. Sets stay in `workout_sets`
+  keyed by `(workout_id, exercise_id)`. Migration `20260701000005_workout_lifecycle.sql`.
 
 ## Commands
 ```bash

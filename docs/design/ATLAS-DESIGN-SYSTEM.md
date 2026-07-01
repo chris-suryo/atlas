@@ -191,23 +191,32 @@ First real gym use showed the composer-first landing was backwards: in the gym y
 Tappable category rows: Push · Pull · Legs · Core · Mobility, then a divider, then Run and Anything. Each strength row shows recency/frequency, and **neglected categories read "due" in amber** — the anti-chest-bias nudge made structural (Chris's stated goal). Mobility is where daily ankle work lives (shows "ankle done today ✓"). If a workout is already in progress, a "Continue · Push · N done" row appears on top. **Run → "Import from WHOOP"** (§7.6), not a manual form.
 
 **Picker (Add exercise for the focus)**
-A search field at top that *also* accepts a full shorthand line (`incline db 60x10x3 @8`) — the parser is the power path. Below: exercises for the focus, **most-used first**, anchors marked with the diamond, each row showing `last: W×R×S`. A **gap-aware suggested** lift is pinned at top (e.g. a shoulder movement inside a push day) so frequency ordering doesn't entrench the bias. Tapping a lift adds it to the session and opens Now for it. Off-list names offer create-on-the-fly.
+A search field at top that *also* accepts a full shorthand line (`incline db 60x10x3 @8`) — the parser is the power path. Below: exercises for the focus, **most-used first**, anchors marked with the diamond, each row showing `last: W×R×S`. A **gap-aware suggested** lift is pinned at top (e.g. a shoulder movement inside a push day) so frequency ordering doesn't entrench the bias. Tapping a lift **queues it and returns to Plan** (build the whole plan before starting) — it does *not* jump to Now. Off-list names offer create-on-the-fly.
 
-**Session (the workout) — two modes via a top `Plan | Now` segmented toggle (swipeable)**
-- **Plan** = the reorderable queue. Hybrid plan+log: **queued** = intended (pending), **now** = the current exercise (amber-tinted), **done** = completed with its set summary + check. Each row has a drag handle (reorder), remove, and taps to jump to Now. `+ Add exercise` (filled primary) opens the Picker; suggestions drop in as pending. A quiet **Finish** writes the session and shows a recap.
-- **Now** = the active-exercise keypad from §6 (CurrentSet → keypad, live progression, logged-set rows, rest timer, Log-set auto-advance). **Finish exercise** returns to Plan with the item checked and the next queued lift teed up.
+**Session (the workout) — plan-first, then a `Plan | Now` toggle**
+The whole session is **DB-persistent** (`workouts` + `workout_exercises` + `workout_sets`), so it survives a reload or app-switch — essential for an installed iPhone PWA that's backgrounded constantly. Lifecycle:
+- **Plan (build phase, before Start).** `+ Add exercise` queues lifts and comes right back here, so you stack several before the clock runs. Rows have a **drag handle** (reorder — persisted) and a remove. The one filled control is **Start workout**; `+ Add` is a quiet secondary until then.
+- **Start workout** stamps `started_at` (the clock starts) and opens **Now** for the first queued lift. The `Plan | Now` segmented toggle now appears.
+- **Now** = the active-exercise keypad from §6 (CurrentSet → keypad, live progression, logged-set rows, rest timer, Log-set auto-advance). **Finish exercise** flips that item to **done** and returns to Plan with the next queued lift teed up.
+- **Plan (after Start)** shows the same queue as a hybrid plan+log: **queued** (pending), **now** (amber), **done** (set summary + check). `+ Add` is the filled primary; a quiet **Finish workout** stamps `finished_at`, shows the recap, and lands on Today.
+
+**Resume:** on every Log load, if an unfinished workout exists (`finished_at IS NULL`) the tab opens straight into **Plan** with the queue and logged sets rebuilt from the DB. Focus is shown **only** when there's no active workout. At most one workout is open at a time (a partial unique index enforces it).
 
 One shared session state: editing in Plan updates Now's context; logging in Now checks the item off in Plan. The `Plan | Now` toggle answers "which mode am I in"; the global bottom nav stays stable (Today · Log · Trends) — Plan/Now is *inside* the Log tab, not a global tab (a global Plan tab would sit empty when idle).
 
 ### Navigation loop
-Today →(Log tab) Focus →(pick focus) Session[Plan]. In Session: `+ Add` → Picker → select → Session[Now]; or tap a queued lift → Now. **Finish exercise** → back to Plan. **Finish workout** → summary → Today. WHOOP is never navigated *to* — it feeds Today (auto) and drops imported runs into the queue.
+Today →(Log tab) Focus →(pick focus) Plan. In Plan: `+ Add` → Picker → select → back to Plan (reorder as needed) → **Start workout** → Now; or tap a queued lift → Now. **Finish exercise** → back to Plan. **Finish workout** → recap → Today. Reopening the Log tab mid-session **resumes** into Plan. WHOOP is never navigated *to* — it feeds Today (auto) and drops imported runs into the queue.
 
 ## 7.6 WHOOP import (in the Log flow)
 - Focus **Run** row = **"Import from WHOOP"**: shows recent WHOOP activities; tap a run to pull it in (objective fields auto-filled per §7.4), then add the ankle check. No manual stat entry.
 - Daily recovery/sleep land on **Today** automatically (webhook + morning cron); a manual **"Sync WHOOP"** button on Today forces a pull. See the WHOOP ingest spec for the engine.
 
 ### Data note
-Persist the session **focus** — add a nullable `workouts.focus` (`push|pull|legs|core|mobility|run`). It's the only way Trends can later show balance-over-time; intent can't be backfilled.
+Persist the session **focus** — nullable `workouts.focus` (`push|pull|legs|core|mobility|run|anything`), set on workout creation. It's the only way Trends can later show balance-over-time; intent can't be backfilled.
+
+The plan-first lifecycle is persisted so a session survives reload/background:
+- `workouts.finished_at timestamptz` (NULL = in progress) + a partial unique index on `(user_id) where finished_at is null` → at most one open workout. `started_at` = when Start was tapped.
+- `workout_exercises` (id, workout_id, exercise_id, `order_index`, `status ∈ {queued,done}`) = the ordered plan queue. Sets stay in `workout_sets` keyed by `(workout_id, exercise_id)`. Migration `20260701000005_workout_lifecycle.sql`.
 
 ---
 

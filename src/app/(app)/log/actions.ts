@@ -60,6 +60,154 @@ export async function appendSets(input: {
   return { ok: true, workoutId };
 }
 
+type OkResult = { ok: true } | { ok: false; error: string };
+
+type PlanAddResult =
+  | { ok: true; workoutId: string; rowId: string }
+  | { ok: false; error: string };
+
+/**
+ * Plan-first: queue an exercise. Creates the (unstarted, unfinished) workout on
+ * the first add — lazily, so picking a Focus without adding leaves no row — then
+ * inserts a `queued` workout_exercises row. Does not log any sets.
+ */
+export async function addToPlan(input: {
+  workoutId: string | null;
+  date: string;
+  focus: string;
+  exerciseId: string;
+  orderIndex: number;
+}): Promise<PlanAddResult> {
+  const supabase = await createClient();
+  if (!supabase) return { ok: false, error: "Supabase is not configured." };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  let workoutId = input.workoutId;
+  if (!workoutId) {
+    const type = input.focus === "mobility" ? "mobility" : "strength";
+    const { data, error } = await supabase
+      .from("workouts")
+      .insert({ user_id: user.id, date: input.date, type, focus: input.focus })
+      .select("id")
+      .single();
+    if (error || !data) {
+      return { ok: false, error: error?.message ?? "Could not start workout." };
+    }
+    workoutId = data.id as string;
+  }
+
+  const { data: we, error: weErr } = await supabase
+    .from("workout_exercises")
+    .insert({
+      user_id: user.id,
+      workout_id: workoutId,
+      exercise_id: input.exerciseId,
+      order_index: input.orderIndex,
+    })
+    .select("id")
+    .single();
+  if (weErr || !we) {
+    return { ok: false, error: weErr?.message ?? "Could not add exercise." };
+  }
+  return { ok: true, workoutId, rowId: we.id as string };
+}
+
+/** Persist a new plan order (order_index per workout_exercises row). */
+export async function reorderPlan(input: {
+  rows: { id: string; order_index: number }[];
+}): Promise<OkResult> {
+  const supabase = await createClient();
+  if (!supabase) return { ok: false, error: "Supabase is not configured." };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  for (const r of input.rows) {
+    const { error } = await supabase
+      .from("workout_exercises")
+      .update({ order_index: r.order_index })
+      .eq("id", r.id);
+    if (error) return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+/** Remove a queued exercise from the plan. */
+export async function removeFromPlan(input: { rowId: string }): Promise<OkResult> {
+  const supabase = await createClient();
+  if (!supabase) return { ok: false, error: "Supabase is not configured." };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  const { error } = await supabase
+    .from("workout_exercises")
+    .delete()
+    .eq("id", input.rowId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/** Start the clock: stamp workouts.started_at. */
+export async function startWorkout(input: { workoutId: string }): Promise<OkResult> {
+  const supabase = await createClient();
+  if (!supabase) return { ok: false, error: "Supabase is not configured." };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  const { error } = await supabase
+    .from("workouts")
+    .update({ started_at: new Date().toISOString() })
+    .eq("id", input.workoutId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/** Mark a plan exercise done (its sets are already in workout_sets). */
+export async function finishPlanExercise(input: {
+  rowId: string;
+}): Promise<OkResult> {
+  const supabase = await createClient();
+  if (!supabase) return { ok: false, error: "Supabase is not configured." };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  const { error } = await supabase
+    .from("workout_exercises")
+    .update({ status: "done" })
+    .eq("id", input.rowId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/** Close the workout: stamp workouts.finished_at (frees the one-active guard). */
+export async function finishWorkout(input: {
+  workoutId: string;
+}): Promise<OkResult> {
+  const supabase = await createClient();
+  if (!supabase) return { ok: false, error: "Supabase is not configured." };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  const { error } = await supabase
+    .from("workouts")
+    .update({ finished_at: new Date().toISOString() })
+    .eq("id", input.workoutId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 type CreateResult =
   | { ok: true; exercise: ExerciseLite }
   | { ok: false; error: string };
@@ -126,6 +274,10 @@ export async function saveRun(input: {
       type: "easy_run",
       focus: "run",
       perceived_effort: input.perceived_effort,
+      // Runs are one-shot: close immediately so they never resume as a plan
+      // and don't occupy the one-active-workout slot.
+      started_at: new Date().toISOString(),
+      finished_at: new Date().toISOString(),
     })
     .select("id")
     .single();
