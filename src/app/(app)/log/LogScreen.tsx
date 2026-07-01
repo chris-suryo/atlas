@@ -111,6 +111,7 @@ export default function LogScreen({
             weight_lbs: set.weight_lbs,
             reps: set.reps,
             rpe: set.rpe,
+            duration_sec: set.duration_sec ?? null,
             set_index: startIndex,
           },
         ],

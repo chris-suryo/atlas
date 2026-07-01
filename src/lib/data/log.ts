@@ -149,7 +149,7 @@ export async function getActiveWorkout(): Promise<ActiveWorkout | null> {
 
   const { data: setData } = await supabase
     .from("workout_sets")
-    .select("weight_lbs, reps, rpe, exercise_id, set_index")
+    .select("weight_lbs, reps, rpe, duration_sec, exercise_id, set_index")
     .eq("workout_id", w.id)
     .order("set_index");
   const byExercise: Record<string, SetShape[]> = {};
@@ -158,6 +158,7 @@ export async function getActiveWorkout(): Promise<ActiveWorkout | null> {
       weight_lbs: s.weight_lbs,
       reps: s.reps,
       rpe: s.rpe,
+      duration_sec: s.duration_sec,
     });
   }
 

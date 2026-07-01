@@ -168,6 +168,7 @@ export default function PlanView({
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
+            autoScroll={false}
             onDragEnd={onDragEnd}
           >
             <SortableContext

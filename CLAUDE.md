@@ -43,7 +43,11 @@ Full plan: `/root/.claude/plans/project-atlas-a-sparkling-newt.md`.
     → Now; **Finish exercise** flips `workout_exercises.status` → `done`; **Finish
     workout** stamps `finished_at` → recap → Today. Migration
     `20260701000005_workout_lifecycle.sql`.
-  - **Fast-follow (done):** rest timer, drag-to-reorder. **Up next** (§7.3) still pending.
+  - **Fast-follow (done):** rest timer, drag-to-reorder (auto-scroll disabled so a drag
+    moves the list, not the page). **Now refinements:** **keypad on-demand** (hidden by
+    default; weight×reps carry over + tap a number to open it; Log set stays hidden) and a
+    **per-set timer** (Start/Stop stopwatch → `workout_sets.duration_sec`, shown in the
+    logged row — the col already existed, no migration). **Up next** (§7.3) still pending.
 - **Runs:** Focus **Run** row = "Import from WHOOP" (§7.6) — **routed to a minimal manual
   run form placeholder** until the WHOOP ingest session. Objective fields come from WHOOP's
   workout API (§7.4); subjective ankle fields stay manual. Spec:

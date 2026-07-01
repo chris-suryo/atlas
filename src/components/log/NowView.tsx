@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { IconCheck, IconClock } from "@tabler/icons-react";
+import {
+  IconCheck,
+  IconClock,
+  IconPlayerStopFilled,
+  IconStopwatch,
+} from "@tabler/icons-react";
 import type { ExerciseLite } from "@/lib/parser";
 import type { LastPerf, SetShape } from "@/lib/data/types";
 import NumericKeypad from "@/components/log/NumericKeypad";
@@ -29,6 +34,8 @@ function primeFrom(last: LastPerf | undefined): Draft {
 /**
  * Active-exercise logging (design §6 keypad, re-hosted in Session "Now").
  * Parent remounts this via `key={exercise.id}`, so the draft primes fresh.
+ * Keypad is on-demand: weight×reps carry over from the last logged set and are
+ * tappable to edit; the freed space holds the per-set timer + logged rows.
  */
 export default function NowView({
   exercise,
@@ -45,20 +52,25 @@ export default function NowView({
 }) {
   const [draft, setDraft] = useState<Draft>(() => primeFrom(last));
   const [field, setField] = useState<"weight" | "reps">("weight");
+  const [keypadOpen, setKeypadOpen] = useState(false);
   const [restStartedAt, setRestStartedAt] = useState<number | null>(null);
+  const [setRunStart, setSetRunStart] = useState<number | null>(null);
+  const [setCapturedSec, setSetCapturedSec] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState(0);
 
   useEffect(() => {
-    if (restStartedAt == null) return;
+    if (restStartedAt == null && setRunStart == null) return;
     const t = setInterval(() => setNowMs(clockNow()), 1000);
     return () => clearInterval(t);
-  }, [restStartedAt]);
+  }, [restStartedAt, setRunStart]);
 
   const setNumber = sets.length + 1;
   const w = draft.weight.trim() === "" ? null : parseFloat(draft.weight);
   const r = draft.reps.trim() === "" ? null : parseInt(draft.reps, 10);
   const prog = progression(w, r, last);
   const restElapsed = restStartedAt != null ? Math.max(0, nowMs - restStartedAt) : 0;
+  const setElapsedMs = setRunStart != null ? Math.max(0, nowMs - setRunStart) : 0;
+  const canLog = draft.weight.trim() !== "" || draft.reps.trim() !== "";
 
   function onDigit(d: string) {
     setDraft((prev) => {
@@ -72,12 +84,35 @@ export default function NowView({
   function onBackspace() {
     setDraft((prev) => ({ ...prev, [field]: prev[field].slice(0, -1) }));
   }
+  function tapField(f: "weight" | "reps") {
+    setField(f);
+    setKeypadOpen(true);
+  }
+  function startSet() {
+    const t = clockNow();
+    setSetRunStart(t);
+    setSetCapturedSec(null);
+    setRestStartedAt(null); // a new set ends the rest
+    setNowMs(t);
+  }
+  function stopSet() {
+    if (setRunStart == null) return;
+    setSetCapturedSec(Math.round(Math.max(0, clockNow() - setRunStart) / 1000));
+    setSetRunStart(null);
+  }
   function logSet() {
     const weight = w != null && !Number.isNaN(w) ? w : null;
     const reps = r != null && !Number.isNaN(r) ? Math.round(r) : null;
     if (weight == null && reps == null) return;
-    onLogSet({ weight_lbs: weight, reps, rpe: draft.rpe });
+    let duration = setCapturedSec;
+    if (setRunStart != null) {
+      duration = Math.round(Math.max(0, clockNow() - setRunStart) / 1000);
+    }
+    onLogSet({ weight_lbs: weight, reps, rpe: draft.rpe, duration_sec: duration ?? null });
     setField("weight");
+    setKeypadOpen(false);
+    setSetRunStart(null);
+    setSetCapturedSec(null);
     const t = clockNow();
     setRestStartedAt(t);
     setNowMs(t);
@@ -99,9 +134,9 @@ export default function NowView({
         <div className="mt-6 flex items-baseline justify-center gap-4">
           <button
             type="button"
-            onClick={() => setField("weight")}
+            onClick={() => tapField("weight")}
             className={`text-[38px] font-medium tracking-[-0.5px] ${
-              field === "weight" ? "text-accent" : "text-text"
+              keypadOpen && field === "weight" ? "text-accent" : "text-text"
             }`}
           >
             {draft.weight || "0"}
@@ -110,9 +145,9 @@ export default function NowView({
           <span className="text-[22px] text-text-faint">×</span>
           <button
             type="button"
-            onClick={() => setField("reps")}
+            onClick={() => tapField("reps")}
             className={`text-[38px] font-medium tracking-[-0.5px] ${
-              field === "reps" ? "text-accent" : "text-text"
+              keypadOpen && field === "reps" ? "text-accent" : "text-text"
             }`}
           >
             {draft.reps || "0"}
@@ -131,8 +166,52 @@ export default function NowView({
           </span>
         </div>
 
+        {/* Per-set stopwatch */}
+        <div className="mt-6 flex items-center gap-3 text-[13px] text-text-muted">
+          <IconStopwatch size={15} className="text-text-faint" />
+          {setRunStart != null ? (
+            <>
+              <span>
+                Set{" "}
+                <span className="text-text tabular-nums">{fmtClock(setElapsedMs)}</span>
+              </span>
+              <button
+                type="button"
+                onClick={stopSet}
+                className="flex items-center gap-1 text-xs text-accent"
+              >
+                <IconPlayerStopFilled size={13} /> Stop
+              </button>
+            </>
+          ) : setCapturedSec != null ? (
+            <>
+              <span>
+                Set{" "}
+                <span className="text-text tabular-nums">
+                  {fmtClock(setCapturedSec * 1000)}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={startSet}
+                className="text-xs text-text-faint"
+              >
+                Restart
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={startSet}
+              className="text-xs text-text-faint"
+            >
+              Start set
+            </button>
+          )}
+        </div>
+
         {restStartedAt != null && (
-          <div className="mt-6 flex items-center gap-2.5 text-[13px] text-text-muted">
+          <div className="mt-4 flex items-center gap-2.5 text-[13px] text-text-muted">
             <IconClock size={15} className="text-text-faint" />
             <span>
               Resting <span className="text-text">{fmtClock(restElapsed)}</span>{" "}
@@ -167,6 +246,11 @@ export default function NowView({
                 <span className="flex-1 text-text-muted">
                   {fmtWeight(s.weight_lbs)} × {s.reps ?? "—"}
                 </span>
+                {s.duration_sec != null && (
+                  <span className="mr-4 text-text-faint tabular-nums">
+                    {fmtClock(s.duration_sec * 1000)}
+                  </span>
+                )}
                 {s.rpe != null && (
                   <span className="mr-4 text-text-faint">RPE {s.rpe}</span>
                 )}
@@ -185,13 +269,26 @@ export default function NowView({
         </button>
       </div>
 
-      <NumericKeypad
-        field={field}
-        onDigit={onDigit}
-        onBackspace={onBackspace}
-        onLogSet={logSet}
-        canLog={draft.weight.trim() !== "" || draft.reps.trim() !== ""}
-      />
+      {keypadOpen ? (
+        <NumericKeypad
+          field={field}
+          onDigit={onDigit}
+          onBackspace={onBackspace}
+          onLogSet={logSet}
+          canLog={canLog}
+        />
+      ) : (
+        <div className="border-t border-line px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3.5">
+          <button
+            type="button"
+            onClick={logSet}
+            disabled={!canLog}
+            className="w-full rounded-control bg-accent px-4 py-3.5 text-base font-medium text-accent-ink transition-opacity disabled:opacity-40"
+          >
+            Log set
+          </button>
+        </div>
+      )}
     </div>
   );
 }

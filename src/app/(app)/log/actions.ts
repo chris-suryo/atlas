@@ -8,6 +8,7 @@ type SetInput = {
   reps: number | null;
   rpe: number | null;
   set_index: number;
+  duration_sec?: number | null;
 };
 
 type AppendResult =
@@ -54,6 +55,7 @@ export async function appendSets(input: {
     reps: s.reps,
     rpe: s.rpe,
     set_index: s.set_index,
+    duration_sec: s.duration_sec ?? null,
   }));
   const { error } = await supabase.from("workout_sets").insert(rows);
   if (error) return { ok: false, error: error.message };
