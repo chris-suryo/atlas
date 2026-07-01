@@ -70,6 +70,7 @@ export default function LogScreen({
   categoryLoad,
   focusMeta,
   active,
+  initialFocus = null,
 }: {
   exercises: ExerciseLite[];
   lastByExercise: Record<string, LastPerf>;
@@ -77,11 +78,16 @@ export default function LogScreen({
   categoryLoad: Record<string, number>;
   focusMeta: FocusMeta;
   active: ActiveWorkout | null;
+  initialFocus?: Focus | null;
 }) {
   const router = useRouter();
   const [library, setLibrary] = useState(exercises);
-  const [focus, setFocus] = useState<Focus | null>(active?.focus ?? null);
-  const [screen, setScreen] = useState<Screen>(active ? "session" : "focus");
+  const [focus, setFocus] = useState<Focus | null>(
+    active?.focus ?? initialFocus ?? null,
+  );
+  const [screen, setScreen] = useState<Screen>(
+    active ? "session" : initialFocus ? "picker" : "focus",
+  );
   const [queue, setQueue] = useState<QueueItem[]>(() => initQueue(active));
   const [currentIndex, setCurrentIndex] = useState<number | null>(() =>
     initIndex(active),

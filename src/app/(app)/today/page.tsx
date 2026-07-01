@@ -1,31 +1,72 @@
-import { createClient } from "@/lib/supabase/server";
+import { getActiveWorkout, getExercises, getHistory } from "@/lib/data/log";
+import {
+  getAnkleRecent,
+  getRecoveryLatest,
+  getWeeklyMileage,
+} from "@/lib/data/today";
+import { ensureSeeded } from "@/lib/actions/seed";
+import { suggestNext, toSuggestExercise } from "@/lib/suggest";
+import { daysUntilRace } from "@/lib/config/running";
+import { computeFocusMeta } from "../log/util";
+import { STRENGTH_FOCUSES, type Focus } from "../log/types";
+import TodayScreen from "@/components/today/TodayScreen";
 
 export const metadata = { title: "Today" };
 
 export default async function TodayPage() {
-  const supabase = await createClient();
-  const { data } = (await supabase?.auth.getUser()) ?? {
-    data: { user: null },
-  };
-  const email = data?.user?.email ?? null;
+  await ensureSeeded(); // first-run safety net (idempotent)
+  const [exercises, history, active, recovery, ankleRecent, buckets] =
+    await Promise.all([
+      getExercises(),
+      getHistory(),
+      getActiveWorkout(),
+      getRecoveryLatest(),
+      getAnkleRecent(),
+      getWeeklyMileage(),
+    ]);
+
+  const todayISO = new Date().toLocaleDateString("en-CA");
+  const focusMeta = computeFocusMeta(exercises, history.last);
+
+  // Focus recommendation = the §7.3 engine run across all categories (gap-driven),
+  // reduced to distinct strength focuses. recovery=null (WHOOP seam inert).
+  const ranked = suggestNext({
+    focus: "anything",
+    library: exercises.map(toSuggestExercise),
+    sessionExercises: [],
+    history: {
+      freq: history.sessions,
+      lastDoneISO: Object.fromEntries(
+        Object.entries(history.last).map(([id, p]) => [id, p.date]),
+      ),
+      categoryLoad: history.categoryLoad,
+    },
+    recovery: null,
+    todayISO,
+    limit: 8,
+  });
+  const cats: Focus[] = [];
+  for (const s of ranked) {
+    const c = s.exercise.category as Focus | null;
+    if (c && STRENGTH_FOCUSES.includes(c) && !cats.includes(c)) cats.push(c);
+  }
+  const focus: Focus = cats[0] ?? "push";
+  const reason =
+    ranked.find((s) => (s.exercise.category as Focus) === focus)?.reason ?? "";
 
   return (
-    <div className="h-full overflow-y-auto px-7 pb-6 pt-[max(1.5rem,env(safe-area-inset-top))]">
-      <header className="flex items-start justify-between">
-        <h1 className="text-[26px] font-medium tracking-tight">Today</h1>
-        <form action="/auth/signout" method="post">
-          <button type="submit" className="py-1 text-xs text-text-faint">
-            Sign out
-          </button>
-        </form>
-      </header>
-
-      {email && <p className="mt-1 text-xs text-text-faint">{email}</p>}
-
-      <p className="mt-10 text-sm leading-relaxed text-text-muted">
-        Milestone 1 placeholder. Your daily overview — planned session,
-        readiness, ankle check — lands in a later milestone.
-      </p>
-    </div>
+    <TodayScreen
+      recovery={recovery}
+      ankleRecent={ankleRecent}
+      buckets={buckets}
+      daysLeft={daysUntilRace(todayISO)}
+      recommendation={{
+        focus,
+        alternates: cats.slice(1, 4),
+        recencyLabel: focusMeta[focus]?.label ?? "",
+        reason,
+      }}
+      activeFocus={active?.focus ?? null}
+    />
   );
 }

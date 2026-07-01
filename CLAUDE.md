@@ -58,7 +58,17 @@ Full plan: `/root/.claude/plans/project-atlas-a-sparkling-newt.md`.
   run form placeholder** until the WHOOP ingest session. Objective fields come from WHOOP's
   workout API (§7.4); subjective ankle fields stay manual. Spec:
   `docs/integrations/ATLAS-WHOOP-INGEST-SPEC.md` — **do not build WHOOP yet**.
-- Today/Trends are placeholders this milestone.
+- **Today (§7.7)** = glanceable dashboard + motivator (`src/app/(app)/today/page.tsx` →
+  `src/components/today/`): **WHOOP rings** (Sleep·Recovery·Strain) + **recovery-vs-strain**
+  render a **"Connect WHOOP" empty state** (recovery table empty until ingest — not zeros);
+  **rule-based recommendation** (reuses §7.3 `suggestNext` with `focus="anything"`,
+  `recovery=null`) + tappable alternates that pre-seed Log via `/log?focus=<focus>`; a
+  **tappable 10-segment ankle ring** upserts `ankle_logs.pain_0_10` (one row/day) + rolling
+  avg; **"Road to Cambridge"** weekly-mileage chart (`runs` bucketed weekly vs a dashed
+  target) + race countdown. Race date + weekly target = `src/lib/config/running.ts` (no DB).
+  **Fuel** is a static stub. All hand-rolled inline-SVG rings/charts, tokens only. `getHistory`
+  is reused; `getWeeklyMileage`/`getRecoveryLatest`/`getAnkleRecent` in `src/lib/data/today.ts`.
+- Trends is a placeholder this milestone.
 
 ## Stack gotchas
 - **Next.js 16**: middleware is renamed **Proxy** — `src/proxy.ts` (exports `proxy` + `config`).

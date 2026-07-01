@@ -6,12 +6,25 @@
 //
 // Pure and deterministic: no DB, no Date.now() (today is passed in).
 
+import type { ExerciseLite } from "@/lib/parser";
 import type {
   SuggestExercise,
   SuggestFocus,
   SuggestInput,
   Suggestion,
 } from "./types";
+
+/** Map a DB exercise row to the subset the engine reasons over. */
+export function toSuggestExercise(e: ExerciseLite): SuggestExercise {
+  return {
+    id: e.id,
+    name: e.name,
+    category: e.category ?? null,
+    tier: e.tier ?? null,
+    muscle: e.muscle ?? null,
+    is_anchor: e.is_anchor,
+  };
+}
 
 /** Target number of primary (compound) lifts before switching to accessories. */
 const PRIMARY_TARGET: Record<string, number> = {

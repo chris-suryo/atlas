@@ -228,6 +228,40 @@ The plan-first lifecycle is persisted so a session survives reload/background:
 
 ---
 
+## 7.7 Today screen (home tab)
+
+**Job:** a glanceable morning **dashboard + motivator**, not a coach. The coaching lives in Plan (§7.5); Today *surfaces* a suggested focus but doesn't argue the case. Everything fits one iPhone screen (19.5:9, no scroll on a 13/16 Pro); Start + tab bar pin to the bottom.
+
+### Order (top → bottom)
+1. **Header** — date + a **time-based greeting** (Good morning/afternoon/evening) on the left; **"synced Xm ago"** on the right (data-freshness cue for the WHOOP webhook + morning cron). If a workout is active, a "Resume" affordance replaces the greeting line.
+2. **WHOOP rings** — three, in WHOOP's wake-to-day order: **Sleep · Recovery · Strain**. Each = a monochrome progress ring (amber only on Recovery, the key metric; Sleep + Strain in bone) filling toward its target, center value, label, and a sub-stat:
+   - Sleep: center `6h20`, sub `72% of need`.
+   - Recovery: center `62%`, sub `HRV 48 · RHR 58` (band-meaningful; amber ring).
+   - Strain: center `8.4`, sub `target 10–14`, plus a **lighter arc segment** on the ring marking the optimal zone (WHOOP-style — the fill shows where you are vs. that band).
+   - Tap any ring → its **detail page** (sleep stages/efficiency/debt · HRV trend/SpO₂/skin temp · strain by workout/HR zones). Detail pages are a fast-follow.
+3. **Recovery vs strain** (14-day trend) — grouped with the WHOOP data, directly under the rings. Two lines (recovery amber, strain bone) + a tiny legend. Compact height. This is the "am I digging a hole" read; kept on Today because it's checked often. *(When populated, index both series to a common base — no dual-axis.)*
+4. **Fuel** — a thin progress bar (kcal vs target) + `Log food` action (CalTrak). Read-only daily total from CalTrak for MVP; Log food deep-links out. **Fast-follow, post-WHOOP.**
+5. **Recommendation** (light) — "Recommended today" + focus (e.g. **Legs**) + `Nd ago` + a short readiness line (`62% recovery → train as planned`) + focus alternates (`or Push · Pull · Core`). The **ankle ring** sits to the **right of this block** (fills the space): a **tappable 10-segment ring** logging **pain 0–10 (lower = better; store in `ankle_logs.pain_0_10`)**, center = today's value, label `Ankle`, rolling into a short average. Fill increases with pain.
+6. **Road to Cambridge** (running) — header with the **half-marathon countdown** (`123 days`) + **weekly mileage vs target** bar chart (bars = actual weekly miles from `runs`; dashed rising line = plan target; current week amber). This is the motivator + consistency read.
+7. **Start workout** (filled primary, pinned bottom above the tab bar with clear separation) — pre-seeds Log with the recommended focus into Plan (§7.5), via `/log?focus=<focus>`. Alternates override the focus before starting.
+
+### States
+- **Shell (pre-WHOOP):** rings + recovery-vs-strain render a graceful **"Connect WHOOP"** empty state (not zeros); everything else (recommendation, ankle, mileage, countdown) works from existing data. Recommendation is rule-based (§7.3, `recovery=null`).
+- **Connected:** rings/trend populate from the `recovery` table (fed by WHOOP ingest); the readiness line gains the recovery modifier (low recovery → "lighter, fewer compounds"). Same engine (§7.3), `recovery.score` now non-null.
+
+### Data sources
+- Rings + trend → `recovery` table (WHOOP ingest; empty until then).
+- Recommendation → the suggestion engine (§7.3), `getHistory`.
+- Ankle → `ankle_logs.pain_0_10` (one row/day, upsert).
+- Mileage → `runs` aggregated weekly; target + race date (Nov 1 2026) from a **TS config** (`src/lib/config/running.ts`), adoptable by the `goals` table later.
+- Fuel → CalTrak daily total (read-only; fast-follow).
+
+### Build split
+- **M1 core (built):** the full layout with the **shell state** — rings in "connect WHOOP" empty state, recovery-vs-strain empty, rule-based recommendation, tappable ankle ring → `ankle_logs`, weekly-mileage chart from `runs`, countdown, Start pre-seeds Log. No new WHOOP dependency.
+- **Fast-follow:** ring detail pages; recovery-vs-strain + rings populated (after WHOOP ingest); CalTrak Fuel link; recovery modifier on the recommendation.
+
+---
+
 ## 8. Implementation notes (stack-specific)
 
 - **Tokens:** `atlas-theme.css` is Tailwind v4 `@theme`. Utilities generate automatically (`bg-bg`, `text-accent`, `border-line`, `font-display`, `rounded-control`).
@@ -242,7 +276,7 @@ The plan-first lifecycle is persisted so a session survives reload/background:
 ## 9. Screen roadmap
 
 - [x] **Log** — specified: §6–§7 (components + keypad) and §7.5 (Focus → Picker → Session with `Plan | Now`).
-- [ ] **Today** — home / "what should I do today" + WHOOP daily data + Sync button; will be appended here.
+- [x] **Today** — specified: §7.7 (dashboard + motivator: WHOOP rings, recovery-vs-strain, fuel, light recommendation + ankle ring, road-to-Cambridge mileage). Shell state built; WHOOP-connected state after ingest.
 - [ ] **Trends** — anchor progression, running, weight, ankle symptoms, consistency; will be appended here.
 
 When Today and Trends are designed, they get their own §7-style sections and any new shared components fold into §6. The tokens rarely change — that's the point.

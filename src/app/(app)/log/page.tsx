@@ -1,13 +1,26 @@
 import { getActiveWorkout, getExercises, getHistory } from "@/lib/data/log";
 import { ensureSeeded } from "@/lib/actions/seed";
 import { computeFocusMeta } from "./util";
+import { STRENGTH_FOCUSES, type Focus } from "./types";
 import LogScreen from "./LogScreen";
 
 export const metadata = { title: "Log" };
 
-export default async function LogPage() {
+/** `/log?focus=push` (from Today's Start) pre-seeds the Picker for that focus. */
+function parseFocus(raw: string | undefined): Focus | null {
+  if (!raw) return null;
+  if (raw === "anything") return "anything";
+  return (STRENGTH_FOCUSES as string[]).includes(raw) ? (raw as Focus) : null;
+}
+
+export default async function LogPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ focus?: string }>;
+}) {
   await ensureSeeded(); // first-run safety net (idempotent)
-  const [exercises, history, active] = await Promise.all([
+  const [sp, exercises, history, active] = await Promise.all([
+    searchParams,
     getExercises(),
     getHistory(),
     getActiveWorkout(),
@@ -21,6 +34,7 @@ export default async function LogPage() {
       categoryLoad={history.categoryLoad}
       focusMeta={focusMeta}
       active={active}
+      initialFocus={parseFocus(sp?.focus)}
     />
   );
 }
