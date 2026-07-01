@@ -21,6 +21,7 @@ export default function PickerView({
   lastByExercise,
   sessionsByExercise,
   queuedIds,
+  suggested,
   onSelect,
   onShorthand,
   onCreate,
@@ -31,6 +32,7 @@ export default function PickerView({
   lastByExercise: Record<string, LastPerf>;
   sessionsByExercise: Record<string, number>;
   queuedIds: Set<string>;
+  suggested: { ex: ExerciseLite; reason: string }[];
   onSelect: (ex: ExerciseLite) => void;
   onShorthand: (line: string) => void;
   onCreate: (name: string) => void;
@@ -97,6 +99,26 @@ export default function PickerView({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-6">
+        {q === "" && suggested.length > 0 && (
+          <div className="mt-4">
+            <p className="text-xs uppercase tracking-wide text-accent">Suggested</p>
+            {suggested.map(({ ex, reason }) => (
+              <button
+                key={ex.id}
+                type="button"
+                onClick={() => onSelect(ex)}
+                className="flex w-full items-center gap-2.5 border-t border-line py-3.5 text-left"
+              >
+                {ex.is_anchor && (
+                  <span className="block h-[7px] w-[7px] shrink-0 rotate-45 bg-accent" />
+                )}
+                <span className="flex-1 text-[15px] text-text">{ex.name}</span>
+                <span className="text-xs text-accent">{reason}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {groups.map((group) => (
           <div key={group.key} className="mt-5 first:mt-4">
             <p className="text-xs uppercase tracking-wide text-text-faint">

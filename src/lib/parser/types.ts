@@ -9,6 +9,7 @@ export type ExerciseLite = {
   default_unit: DefaultUnit;
   category?: string | null;
   tier?: "primary" | "accessory" | null;
+  muscle?: string | null;
 };
 
 export type ParsedSet = {

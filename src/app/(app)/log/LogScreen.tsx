@@ -1,10 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { arrayMove } from "@dnd-kit/sortable";
 import { parseLine, type ExerciseLite } from "@/lib/parser";
 import type { LastPerf, SetShape } from "@/lib/data/types";
+import { suggestNext } from "@/lib/suggest";
+import type { SuggestExercise } from "@/lib/suggest/types";
 import {
   STRENGTH_FOCUSES,
   type ActiveWorkout,
@@ -37,6 +39,15 @@ function titleCase(s: string): string {
   return s.replace(/\S+/g, (w) => (w ? w[0].toUpperCase() + w.slice(1) : w));
 }
 
+const asSuggest = (e: ExerciseLite): SuggestExercise => ({
+  id: e.id,
+  name: e.name,
+  category: e.category ?? null,
+  tier: e.tier ?? null,
+  muscle: e.muscle ?? null,
+  is_anchor: e.is_anchor,
+});
+
 const isTemp = (rowId: string) => rowId.startsWith("temp-");
 
 /** Resume: mark the first not-done lift as the client-only "now" once started. */
@@ -56,12 +67,14 @@ export default function LogScreen({
   exercises,
   lastByExercise,
   sessionsByExercise,
+  categoryLoad,
   focusMeta,
   active,
 }: {
   exercises: ExerciseLite[];
   lastByExercise: Record<string, LastPerf>;
   sessionsByExercise: Record<string, number>;
+  categoryLoad: Record<string, number>;
   focusMeta: FocusMeta;
   active: ActiveWorkout | null;
 }) {
@@ -310,6 +323,33 @@ export default function LogScreen({
 
   const queuedIds = new Set(queue.map((q) => q.exercise.id));
 
+  // Rule-based suggestions (§7.3): recompute as focus/queue/history change.
+  // recovery=null is the inert WHOOP seam.
+  const suggested = useMemo(() => {
+    if (!focus) return [];
+    const ranked = suggestNext({
+      focus,
+      library: library.map(asSuggest),
+      sessionExercises: queue.map((q) => asSuggest(q.exercise)),
+      history: {
+        freq: sessionsByExercise,
+        lastDoneISO: Object.fromEntries(
+          Object.entries(lastByExercise).map(([id, p]) => [id, p.date]),
+        ),
+        categoryLoad,
+      },
+      recovery: null,
+      todayISO: localDateISO(),
+      limit: 3,
+    });
+    return ranked
+      .map((s) => ({
+        ex: library.find((e) => e.id === s.exercise.id),
+        reason: s.reason,
+      }))
+      .filter((x): x is { ex: ExerciseLite; reason: string } => !!x.ex);
+  }, [focus, library, queue, sessionsByExercise, lastByExercise, categoryLoad]);
+
   return (
     <div className="relative h-full">
       {screen === "focus" && (
@@ -339,6 +379,7 @@ export default function LogScreen({
           lastByExercise={lastByExercise}
           sessionsByExercise={sessionsByExercise}
           queuedIds={queuedIds}
+          suggested={suggested.slice(0, 2)}
           onSelect={(ex) => queueExercise(ex)}
           onShorthand={onShorthand}
           onCreate={(name) => void onCreate(name)}
@@ -401,10 +442,12 @@ export default function LogScreen({
                 focus={focus}
                 queue={queue}
                 started={started}
+                upNext={suggested.slice(0, 3)}
                 onJump={jump}
                 onRemove={removeFromQueue}
                 onReorder={reorder}
                 onAdd={() => setScreen("picker")}
+                onAddSuggestion={(ex) => queueExercise(ex)}
                 onStart={beginWorkout}
                 onFinish={() => {
                   setScreen("recap");

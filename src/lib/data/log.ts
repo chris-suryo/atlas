@@ -35,7 +35,7 @@ export async function getExercises(): Promise<ExerciseLite[]> {
   if (!supabase) return [];
   const { data } = await supabase
     .from("exercises")
-    .select("id, name, aliases, is_anchor, default_unit, category, tier")
+    .select("id, name, aliases, is_anchor, default_unit, category, tier, muscle")
     .order("name");
   return (data ?? []) as ExerciseLite[];
 }
@@ -56,9 +56,14 @@ type SetRow = {
 export type History = {
   /** most-recent session's sets per exercise (for "last" + progression) */
   last: Record<string, LastPerf>;
-  /** distinct-workout count per exercise (for "Up next" preference) */
+  /** distinct-workout count per exercise (preference signal) */
   sessions: Record<string, number>;
+  /** workouts per focus over the last ~10 days (category-gap signal, §7.3) */
+  categoryLoad: Record<string, number>;
 };
+
+/** Rolling window for the category-load (under-trained) signal. */
+const CATEGORY_WINDOW_DAYS = 10;
 
 /**
  * Reduces all of the user's sets once: the most-recent workout per exercise
@@ -67,7 +72,7 @@ export type History = {
  */
 export async function getHistory(): Promise<History> {
   const supabase = await createClient();
-  if (!supabase) return { last: {}, sessions: {} };
+  if (!supabase) return { last: {}, sessions: {}, categoryLoad: {} };
   const { data } = await supabase
     .from("workout_sets")
     .select(
@@ -108,7 +113,21 @@ export async function getHistory(): Promise<History> {
   const sessions: Record<string, number> = {};
   for (const id of Object.keys(seenWorkouts)) sessions[id] = seenWorkouts[id].size;
 
-  return { last, sessions };
+  // Category load: distinct workouts per focus over the rolling window (the
+  // under-trained "gap" signal). One workout row = one session.
+  const cutoff = new Date(
+    Date.now() - CATEGORY_WINDOW_DAYS * 86400000,
+  ).toLocaleDateString("en-CA");
+  const { data: recent } = await supabase
+    .from("workouts")
+    .select("focus, date")
+    .gte("date", cutoff);
+  const categoryLoad: Record<string, number> = {};
+  for (const w of recent ?? []) {
+    if (w.focus) categoryLoad[w.focus] = (categoryLoad[w.focus] ?? 0) + 1;
+  }
+
+  return { last, sessions, categoryLoad };
 }
 
 type WorkoutExerciseRow = {
@@ -141,7 +160,7 @@ export async function getActiveWorkout(): Promise<ActiveWorkout | null> {
   const { data: weData } = await supabase
     .from("workout_exercises")
     .select(
-      "id, exercise_id, status, exercises!inner(id, name, aliases, is_anchor, default_unit, category, tier)",
+      "id, exercise_id, status, exercises!inner(id, name, aliases, is_anchor, default_unit, category, tier, muscle)",
     )
     .eq("workout_id", w.id)
     .order("order_index");

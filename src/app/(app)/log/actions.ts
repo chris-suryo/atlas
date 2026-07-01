@@ -237,7 +237,7 @@ export async function createExercise(input: {
       default_unit: "lbs",
       aliases: [],
     })
-    .select("id, name, aliases, is_anchor, default_unit, category, tier")
+    .select("id, name, aliases, is_anchor, default_unit, category, tier, muscle")
     .single();
   if (error || !data) {
     return { ok: false, error: error?.message ?? "Could not create exercise." };

@@ -20,6 +20,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import type { ExerciseLite } from "@/lib/parser";
 import type { Focus, QueueItem } from "@/app/(app)/log/types";
 import { summarizeSets } from "@/app/(app)/log/util";
 
@@ -114,20 +115,24 @@ export default function PlanView({
   focus,
   queue,
   started,
+  upNext,
   onJump,
   onRemove,
   onReorder,
   onAdd,
+  onAddSuggestion,
   onStart,
   onFinish,
 }: {
   focus: Focus;
   queue: QueueItem[];
   started: boolean;
+  upNext: { ex: ExerciseLite; reason: string }[];
   onJump: (index: number) => void;
   onRemove: (index: number) => void;
   onReorder: (activeId: string, overId: string) => void;
   onAdd: () => void;
+  onAddSuggestion: (ex: ExerciseLite) => void;
   onStart: () => void;
   onFinish: () => void;
 }) {
@@ -187,6 +192,32 @@ export default function PlanView({
             </SortableContext>
           </DndContext>
         </div>
+
+        {upNext.length > 0 && (
+          <div className="mt-7">
+            <p className="text-xs uppercase tracking-wide text-text-faint">Up next</p>
+            {upNext.map(({ ex, reason }) => (
+              <div
+                key={ex.id}
+                className="flex items-center gap-2.5 border-t border-line py-3"
+              >
+                {ex.is_anchor && (
+                  <span className="block h-[7px] w-[7px] shrink-0 rotate-45 bg-accent" />
+                )}
+                <span className="flex-1 text-[15px] text-text-muted">{ex.name}</span>
+                <span className="text-xs text-text-faint">{reason}</span>
+                <button
+                  type="button"
+                  onClick={() => onAddSuggestion(ex)}
+                  aria-label={`Add ${ex.name}`}
+                  className="text-accent"
+                >
+                  <IconPlus size={18} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         <button
           type="button"

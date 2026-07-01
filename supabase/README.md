@@ -11,6 +11,8 @@ Apply the migrations in filename order, then the seed.
    guard; `workout_exercises` (the ordered, statused plan queue) with RLS + `updated_at` trigger
 6. `migrations/20260701000006_exercise_tier.sql` — `exercises.tier` (primary/accessory) +
    backfill of the 45 seeded rows (Picker groups Main lifts above Accessories)
+7. `migrations/20260701000007_exercise_muscle.sql` — `exercises.muscle` (primary mover) +
+   backfill of the 45 seeded rows (suggestion engine's muscle-gap signal, §7.3)
 
 ## Seed
 - `seed.sql` — 45 exercises with aliases.

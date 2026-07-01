@@ -163,13 +163,19 @@ Toggle: tapping a number (§6.2) or a suggestion (§6.7) → entry mode. Logging
 2. **Voice/type log:** speak or type shorthand in the composer → parser → sets created.
 3. **Pick-as-you-go:** tap an Up next suggestion → it becomes the current exercise, keypad primed.
 
-### 7.3 "Up next" suggestion logic (rule-based, no WHOOP)
-Recompute after each logged set/exercise. Rank candidate exercises by a **blend of preference and gap**, filtered to Planet Fitness–available equipment:
+### 7.3 Suggestion engine (rule-based, no LLM) — `src/lib/suggest/`
+A pure, unit-tested function `suggestNext({ focus, library, sessionExercises, history, recovery, todayISO })` → ranked suggestions. Recomputed on enter-Picker / add / finish. **Gap dominates preference** so favorites don't entrench the chest bias.
 
-- **Preference** — how often Chris reaches for this exercise (frequency/recency from `workout_sets` history). Surfaces favorites.
-- **Gap** — what's missing: muscle patterns/`category` not yet trained today, **anchors not yet done**, and (later) whatever the weekly template still wants. This is the anti-chest-bias mechanism.
+- **Candidates** = lifts in the focus (all categories for **Anything**), minus what's already in the session.
+- **Phase (compounds first).** Target ~2 primaries for push/pull/legs (0 for core/mobility); under target → suggest `tier=primary`, else `accessory`. Mirrors how a session is built. Anything skips the phase (pure gap).
+- **Score = W_gap·gap + W_pref·pref**, `W_gap ≫ W_pref`:
+  - **gap** — muscle not yet trained this session (+), focus **anchor** not yet done (+), muscle **not trained in the last ~10 days** (+, "you skip …"), category under-trained over ~10 days via `categoryLoad` (+). Muscle already covered this session (−).
+  - **pref** — all-time `frequency`, recency-decayed (a lift just done is down-weighted so it isn't re-suggested).
+- **Reason** names the dominant factor: `"main <focus> lift"` · `"you skip <muscle>"` · `"balances <muscle>"` · `"your go-to"` · `"anchor"`.
+- **Surfaces:** a **"Suggested"** pin (top 1–2) above Main lifts in the **Picker**; an **"Up next"** strip (top 1–3) under the queue in **Plan**, whose **+** adds a *queued* row (stays plan-first, no jump to Now).
+- **WHOOP seam:** `recovery` (a 0–100 score) is accepted but **null/inert** until the WHOOP ingest session. When wired: low recovery lowers the primary target and biases accessories; high allows +1 primary — no engine rewrite. Muscle map = `exercises.muscle` (single primary mover per lift; migration `20260701000007`).
 
-Blend so the list leans toward lifts he likes *while nudging toward what's neglected*. The row's reason string names whichever factor drove it. Pure heuristic on the existing schema; gets smarter as history grows. (This is separate from the WHOOP-driven daily recommendation, which is a later phase.)
+Pure heuristic on the existing schema; gets smarter as history grows.
 
 ### 7.4 Runs & WHOOP
 Correcting the M1 plan: WHOOP's workout API **does** return, for a run, duration, average/max heart rate, HR-zone durations, strain, calories, and — when the run was GPS-recorded — `distance_meter` and `altitude_gain_meter` (pace = distance ÷ duration). A `workout.updated` webhook pushes it. So WHOOP can auto-populate nearly the whole `runs` row.
@@ -191,7 +197,7 @@ First real gym use showed the composer-first landing was backwards: in the gym y
 Tappable category rows: Push · Pull · Legs · Core · Mobility, then a divider, then Run and Anything. Each strength row shows recency/frequency, and **neglected categories read "due" in amber** — the anti-chest-bias nudge made structural (Chris's stated goal). Mobility is where daily ankle work lives (shows "ankle done today ✓"). If a workout is already in progress, a "Continue · Push · N done" row appears on top. **Run → "Import from WHOOP"** (§7.6), not a manual form.
 
 **Picker (Add exercise for the focus)**
-A search field at top that *also* accepts a full shorthand line (`incline db 60x10x3 @8`) — the parser is the power path. Below: exercises for the focus, grouped **Main lifts** (compound/`tier=primary`) above **Accessories** (isolation/`tier=accessory`) — mirroring how a session is built, compounds → complementary. Within each group, **most-used first**, anchors marked with the diamond, each row showing `last: W×R×S`. (Untiered create-on-the-fly rows fall in with Accessories.) A **gap-aware suggested** lift is pinned at top (e.g. a shoulder movement inside a push day) so frequency ordering doesn't entrench the bias. Tapping a lift **queues it and returns to Plan** (build the whole plan before starting) — it does *not* jump to Now. Off-list names offer create-on-the-fly.
+A search field at top that *also* accepts a full shorthand line (`incline db 60x10x3 @8`) — the parser is the power path. Below: exercises for the focus, grouped **Main lifts** (compound/`tier=primary`) above **Accessories** (isolation/`tier=accessory`) — mirroring how a session is built, compounds → complementary. Within each group, **most-used first**, anchors marked with the diamond, each row showing `last: W×R×S`. (Untiered create-on-the-fly rows fall in with Accessories.) A **"Suggested"** pin (the §7.3 engine, top 1–2) sits above Main lifts (e.g. a shoulder movement inside a push day) so frequency ordering doesn't entrench the bias; each shows its reason. Tapping a lift **queues it and returns to Plan** (build the whole plan before starting) — it does *not* jump to Now. Off-list names offer create-on-the-fly.
 
 **Session (the workout) — plan-first, then a `Plan | Now` toggle**
 The whole session is **DB-persistent** (`workouts` + `workout_exercises` + `workout_sets`), so it survives a reload or app-switch — essential for an installed iPhone PWA that's backgrounded constantly. Lifecycle:
@@ -200,7 +206,7 @@ The whole session is **DB-persistent** (`workouts` + `workout_exercises` + `work
 - **Now** = the active-exercise view (CurrentSet, live progression, logged-set rows, rest timer). **Finish exercise** flips that item to **done** and returns to Plan with the next queued lift teed up. Two details make it gym-fast:
   - **Keypad on-demand.** The keypad is **hidden by default** — weight×reps carry over from the last logged set and are big/tappable; the freed space holds the per-set timer, logged rows, and the filled **Log set** button. Tapping the weight or reps number slides the keypad up to edit, then it hides again. Log set records the set and **stays keypad-hidden**, so the common case (same load, next set) is one tap.
   - **Per-set timer.** A stopwatch — **Start set → Stop** — captures the working-set duration into `workout_sets.duration_sec` (Log set auto-stops a running timer). It shows in the logged-set row. Distinct from the rest timer, which auto-starts after Log set.
-- **Plan (after Start)** shows the same queue as a hybrid plan+log: **queued** (pending), **now** (amber), **done** (set summary + check). `+ Add` is the filled primary; a quiet **Finish workout** stamps `finished_at`, shows the recap, and lands on Today.
+- **Plan (after Start)** shows the same queue as a hybrid plan+log: **queued** (pending), **now** (amber), **done** (set summary + check). An **"Up next"** strip (§7.3 engine, top 1–3) sits under the queue; its **+** drops a *queued* row (plan-first, no jump to Now). `+ Add` is the filled primary; a quiet **Finish workout** stamps `finished_at`, shows the recap, and lands on Today.
 
 **Resume:** on every Log load, if an unfinished workout exists (`finished_at IS NULL`) the tab opens straight into **Plan** with the queue and logged sets rebuilt from the DB. Focus is shown **only** when there's no active workout. At most one workout is open at a time (a partial unique index enforces it).
 

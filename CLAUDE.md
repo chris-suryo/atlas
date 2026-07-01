@@ -48,7 +48,12 @@ Full plan: `/root/.claude/plans/project-atlas-a-sparkling-newt.md`.
     moves the list, not the page). **Now refinements:** **keypad on-demand** (hidden by
     default; weight×reps carry over + tap a number to open it; Log set stays hidden) and a
     **per-set timer** (Start/Stop stopwatch → `workout_sets.duration_sec`, shown in the
-    logged row — the col already existed, no migration). **Up next** (§7.3) still pending.
+    logged row — the col already existed, no migration).
+  - **Suggestion engine (§7.3):** rule-based coach `src/lib/suggest/` (pure, Vitest) —
+    `suggestNext` blends **gap ≫ preference** (tier phasing, muscle/anchor/category gaps,
+    recency-decayed frequency), returns top 1–3 with a reason string. **Picker "Suggested"**
+    pin + **Plan "Up next"** strip (`+` queues, plan-first). `recovery` param is the inert
+    **WHOOP seam**. `getHistory` gains `categoryLoad` (10-day per-focus load).
 - **Runs:** Focus **Run** row = "Import from WHOOP" (§7.6) — **routed to a minimal manual
   run form placeholder** until the WHOOP ingest session. Objective fields come from WHOOP's
   workout API (§7.4); subjective ankle fields stay manual. Spec:
@@ -82,6 +87,9 @@ Full plan: `/root/.claude/plans/project-atlas-a-sparkling-newt.md`.
   isolation/complementary so the Picker groups **Main lifts** above **Accessories** (19
   primary · 26 accessory across the seed; anchors ⊂ primary). Migration
   `20260701000006_exercise_tier.sql`; also in `seed-data.ts`/`seed.sql`.
+- **`exercises.muscle`** (nullable text; single primary mover, 14 buckets) powers the
+  suggestion engine's muscle-gap signal. Migration `20260701000007_exercise_muscle.sql`;
+  also in `seed-data.ts`/`seed.sql`.
 
 ## Commands
 ```bash

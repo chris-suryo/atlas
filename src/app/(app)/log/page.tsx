@@ -18,6 +18,7 @@ export default async function LogPage() {
       exercises={exercises}
       lastByExercise={history.last}
       sessionsByExercise={history.sessions}
+      categoryLoad={history.categoryLoad}
       focusMeta={focusMeta}
       active={active}
     />
