@@ -55,9 +55,9 @@ Full plan: `/root/.claude/plans/project-atlas-a-sparkling-newt.md`.
 8 tables, all with `user_id` + owner-only RLS and `updated_at` (moddatetime) triggers:
 `exercises`, `workouts`, `workout_sets`, `runs`, `body_metrics`, `ankle_logs`, `goals`,
 `recovery` (stub; the future WHOOP sink). See `supabase/README.md`.
-- **`workouts.focus`** (nullable `push|pull|legs|core|mobility|run`) records the session's
-  intent for Trends balance-over-time; set on workout creation. Migration
-  `20260701000004_workout_focus.sql`.
+- **`workouts.focus`** (nullable `push|pull|legs|core|mobility|run|anything`) records the
+  session's intent for Trends balance-over-time; set on workout creation. Migration
+  `20260701000004_workout_focus.sql` (`anything` = stored freeform, distinct from NULL).
 
 ## Commands
 ```bash

@@ -16,7 +16,7 @@ export default function NumericKeypad({
   onDigit: (d: string) => void;
   onBackspace: () => void;
   onLogSet: () => void;
-  onVoice: () => void;
+  onVoice?: () => void;
   canLog: boolean;
 }) {
   return (
@@ -25,14 +25,16 @@ export default function NumericKeypad({
         <span>
           Editing <span className="text-accent">{field}</span>
         </span>
-        <button
-          type="button"
-          onClick={onVoice}
-          aria-label="Type or speak instead"
-          className="text-text-muted"
-        >
-          <IconMicrophone size={18} />
-        </button>
+        {onVoice && (
+          <button
+            type="button"
+            onClick={onVoice}
+            aria-label="Type or speak instead"
+            className="text-text-muted"
+          >
+            <IconMicrophone size={18} />
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-3 gap-0.5">

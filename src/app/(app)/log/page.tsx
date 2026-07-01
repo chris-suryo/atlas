@@ -1,6 +1,6 @@
 import { getExercises, getHistory } from "@/lib/data/log";
 import { ensureSeeded } from "@/lib/actions/seed";
-import { todayLabel } from "@/lib/date";
+import { computeFocusMeta } from "./util";
 import LogScreen from "./LogScreen";
 
 export const metadata = { title: "Log" };
@@ -11,12 +11,13 @@ export default async function LogPage() {
     getExercises(),
     getHistory(),
   ]);
+  const focusMeta = computeFocusMeta(exercises, history.last);
   return (
     <LogScreen
       exercises={exercises}
       lastByExercise={history.last}
       sessionsByExercise={history.sessions}
-      dateLabel={todayLabel()}
+      focusMeta={focusMeta}
     />
   );
 }
