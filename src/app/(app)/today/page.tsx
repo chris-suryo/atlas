@@ -15,7 +15,12 @@ import TodayScreen from "@/components/today/TodayScreen";
 
 export const metadata = { title: "Today" };
 
-export default async function TodayPage() {
+export default async function TodayPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ whoop?: string }>;
+}) {
+  const sp = await searchParams;
   await ensureSeeded(); // first-run safety net (idempotent)
   const [
     exercises,
@@ -83,6 +88,7 @@ export default async function TodayPage() {
         reason,
       }}
       activeFocus={active?.focus ?? null}
+      whoopNotice={sp?.whoop ?? null}
     />
   );
 }

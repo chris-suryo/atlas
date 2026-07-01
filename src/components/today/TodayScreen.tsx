@@ -40,6 +40,17 @@ function dateLabel(): string {
     day: "numeric",
   });
 }
+const WHOOP_NOTICE: Record<string, { text: string; ok: boolean }> = {
+  connected: { text: "WHOOP connected", ok: true },
+  synced: { text: "WHOOP synced", ok: true },
+  disconnected: { text: "WHOOP disconnected", ok: true },
+  state: { text: "Connect failed: security check (state) — try again", ok: false },
+  unconfigured: { text: "Connect failed: server not configured", ok: false },
+  token: { text: "Connect failed: WHOOP token exchange (check client secret / redirect URI)", ok: false },
+  store: { text: "Connect failed: saving tokens", ok: false },
+  error: { text: "WHOOP sync failed — check logs", ok: false },
+};
+
 function syncedAgo(iso: string): string {
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
   if (mins < 1) return "synced just now";
@@ -58,6 +69,7 @@ export default function TodayScreen({
   daysLeft,
   recommendation,
   activeFocus,
+  whoopNotice,
 }: {
   recovery: RecoveryRow | null;
   recoverySeries: RecoveryPoint[];
@@ -72,6 +84,7 @@ export default function TodayScreen({
     reason: string;
   };
   activeFocus: Focus | null;
+  whoopNotice: string | null;
 }) {
   const router = useRouter();
   const [greet] = useState(greeting);
@@ -140,6 +153,17 @@ export default function TodayScreen({
       </div>
 
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-7 pb-4 pt-3">
+        {whoopNotice && WHOOP_NOTICE[whoopNotice] && (
+          <p
+            className={`rounded-control px-3 py-2 text-center text-[11px] ${
+              WHOOP_NOTICE[whoopNotice].ok
+                ? "text-text-muted"
+                : "border border-line text-accent"
+            }`}
+          >
+            {WHOOP_NOTICE[whoopNotice].text}
+          </p>
+        )}
         <WhoopRings recovery={recovery} />
         <RecoveryStrainTrend points={recoverySeries} connected={whoop.connected} />
         {whoop.connected && (
