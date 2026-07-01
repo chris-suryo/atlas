@@ -20,10 +20,11 @@ The Milestone 1 plan predates this design work. Where they conflict, **this docu
 - **Log screen UI.** The plan's "editable sets grid with ± steppers" (Execution outline #5 and Parser §4 "fast-adjust: weight ±5, reps ±1") is **superseded**. The Log screen is the keypad + list model in §6–§7: tap a number → custom numeric keypad; one filled "Log set"; rest timer; "Up next" suggestions. There are no ± steppers.
 - **The NL parser is still correct and approved** — it powers the "say or type" composer (§6.8), one of the two entry modes. Parser logic ships as planned; only the *grid/stepper UI* around it changes to the keypad.
 - **Runs.** The plan's note that "WHOOP isn't the right source for run distance/pace/elevation" is **wrong** — see §7.4. Keep the M1 run form minimal.
+- **Log entry point (v2, §7.5).** The composer-first Log landing is **superseded** by a selection-first flow: Focus → Picker → Session (with a `Plan | Now` toggle). The keypad, rest timer, progression, and "Up next" from §6–§7 are all **reused inside the Session's "Now" mode** — nothing there is thrown away; it's re-hosted. One-exercise-at-a-time is replaced by a reorderable session queue.
 
 ### M1 scope split (so the first build is testable fast)
-- **M1 core (needed to test on phone):** keypad entry + NL parser + save + inline "last: W×R×S".
-- **Fast-follow (right after, not blocking the first install):** rest timer, "Up next" suggestions (§7.3).
+- **M1 core (needed to test on phone):** Focus → Picker → Session queue → keypad entry (Now) + save + inline "last: W×R×S".
+- **Fast-follow (right after, not blocking the first install):** rest timer, "Up next" suggestions (§7.3), drag-to-reorder in the queue.
 
 ---
 
@@ -180,6 +181,36 @@ Implications:
 
 ---
 
+## 7.5 Log flow v2 — Focus → Picker → Session (selection-first)
+
+First real gym use showed the composer-first landing was backwards: in the gym you *select* what you're doing, you don't type it. The Log tab is now a guided, tap-first flow. Same tokens, borderless system, and it **reuses** every logging component from §6.
+
+### Screens
+
+**Focus (Log tab landing) — "What are you training?"**
+Tappable category rows: Push · Pull · Legs · Core · Mobility, then a divider, then Run and Anything. Each strength row shows recency/frequency, and **neglected categories read "due" in amber** — the anti-chest-bias nudge made structural (Chris's stated goal). Mobility is where daily ankle work lives (shows "ankle done today ✓"). If a workout is already in progress, a "Continue · Push · N done" row appears on top. **Run → "Import from WHOOP"** (§7.6), not a manual form.
+
+**Picker (Add exercise for the focus)**
+A search field at top that *also* accepts a full shorthand line (`incline db 60x10x3 @8`) — the parser is the power path. Below: exercises for the focus, **most-used first**, anchors marked with the diamond, each row showing `last: W×R×S`. A **gap-aware suggested** lift is pinned at top (e.g. a shoulder movement inside a push day) so frequency ordering doesn't entrench the bias. Tapping a lift adds it to the session and opens Now for it. Off-list names offer create-on-the-fly.
+
+**Session (the workout) — two modes via a top `Plan | Now` segmented toggle (swipeable)**
+- **Plan** = the reorderable queue. Hybrid plan+log: **queued** = intended (pending), **now** = the current exercise (amber-tinted), **done** = completed with its set summary + check. Each row has a drag handle (reorder), remove, and taps to jump to Now. `+ Add exercise` (filled primary) opens the Picker; suggestions drop in as pending. A quiet **Finish** writes the session and shows a recap.
+- **Now** = the active-exercise keypad from §6 (CurrentSet → keypad, live progression, logged-set rows, rest timer, Log-set auto-advance). **Finish exercise** returns to Plan with the item checked and the next queued lift teed up.
+
+One shared session state: editing in Plan updates Now's context; logging in Now checks the item off in Plan. The `Plan | Now` toggle answers "which mode am I in"; the global bottom nav stays stable (Today · Log · Trends) — Plan/Now is *inside* the Log tab, not a global tab (a global Plan tab would sit empty when idle).
+
+### Navigation loop
+Today →(Log tab) Focus →(pick focus) Session[Plan]. In Session: `+ Add` → Picker → select → Session[Now]; or tap a queued lift → Now. **Finish exercise** → back to Plan. **Finish workout** → summary → Today. WHOOP is never navigated *to* — it feeds Today (auto) and drops imported runs into the queue.
+
+## 7.6 WHOOP import (in the Log flow)
+- Focus **Run** row = **"Import from WHOOP"**: shows recent WHOOP activities; tap a run to pull it in (objective fields auto-filled per §7.4), then add the ankle check. No manual stat entry.
+- Daily recovery/sleep land on **Today** automatically (webhook + morning cron); a manual **"Sync WHOOP"** button on Today forces a pull. See the WHOOP ingest spec for the engine.
+
+### Data note
+Persist the session **focus** — add a nullable `workouts.focus` (`push|pull|legs|core|mobility|run`). It's the only way Trends can later show balance-over-time; intent can't be backfilled.
+
+---
+
 ## 8. Implementation notes (stack-specific)
 
 - **Tokens:** `atlas-theme.css` is Tailwind v4 `@theme`. Utilities generate automatically (`bg-bg`, `text-accent`, `border-line`, `font-display`, `rounded-control`).
@@ -193,8 +224,8 @@ Implications:
 
 ## 9. Screen roadmap
 
-- [x] **Log** — specified (this doc).
-- [ ] **Today** — home / "what should I do today"; will be appended here.
+- [x] **Log** — specified: §6–§7 (components + keypad) and §7.5 (Focus → Picker → Session with `Plan | Now`).
+- [ ] **Today** — home / "what should I do today" + WHOOP daily data + Sync button; will be appended here.
 - [ ] **Trends** — anchor progression, running, weight, ankle symptoms, consistency; will be appended here.
 
 When Today and Trends are designed, they get their own §7-style sections and any new shared components fold into §6. The tokens rarely change — that's the point.

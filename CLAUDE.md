@@ -26,15 +26,20 @@ Full plan: `/root/.claude/plans/project-atlas-a-sparkling-newt.md`.
 ## Milestone 1 status
 - ✅ Scaffold, schema (migrations applied), **email+password auth** with first-run
   auto-seed (`src/lib/actions/seed.ts`), PWA, design tokens + Space Grotesk.
-- **Log screen = keypad + list model** (design §6–§7), NOT ± steppers: tap a number →
-  custom NumericKeypad; the NL composer ("say or type") is the alternate entry mode,
-  driven by the parser.
-  - **M1 core:** keypad entry + NL parser + save + inline "last: W×R×S".
-  - **Fast-follow (not blocking first install):** rest timer, "Up next" suggestions (§7.3).
-- **Runs:** keep the entry form **minimal**. WHOOP's workout API returns
-  duration/HR/distance/elevation for GPS runs (design §7.4); only the subjective ankle
-  fields (`ankle_pain_0_10`, `lateral_tightness_0_10`, `symptom_trend`) are the durable
-  manual part. WHOOP run-import is an early Phase-1 item, not M1.
+- **Log tab = selection-first flow** (design **§7.5**, supersedes the composer-first
+  landing & one-exercise model): **Focus** (Push·Pull·Legs·Core·Mobility / Run / Anything;
+  neglected categories read "due" in amber) → **Picker** (search that also parses shorthand,
+  most-used-first, anchors diamond-marked, `last: W×R×S`, one gap-aware "suggested" pinned)
+  → **Session** with a `Plan | Now` segmented toggle. The §6 keypad/rest-timer/progression/
+  Up-next are **re-hosted inside "Now"** — reused, not rewritten. Plan = reorderable queue
+  (queued/now/done) + `+ Add` + quiet Finish (→ recap). Plan/Now lives inside the Log tab;
+  global nav stays Today·Log·Trends.
+  - **M1 core:** Focus → Picker → Session[Now] keypad → save + inline "last: W×R×S".
+  - **Fast-follow:** rest timer, "Up next" suggestions (§7.3), drag-to-reorder.
+- **Runs:** Focus **Run** row = "Import from WHOOP" (§7.6) — **routed to a minimal manual
+  run form placeholder** until the WHOOP ingest session. Objective fields come from WHOOP's
+  workout API (§7.4); subjective ankle fields stay manual. Spec:
+  `docs/integrations/ATLAS-WHOOP-INGEST-SPEC.md` — **do not build WHOOP yet**.
 - Today/Trends are placeholders this milestone.
 
 ## Stack gotchas
@@ -50,6 +55,9 @@ Full plan: `/root/.claude/plans/project-atlas-a-sparkling-newt.md`.
 8 tables, all with `user_id` + owner-only RLS and `updated_at` (moddatetime) triggers:
 `exercises`, `workouts`, `workout_sets`, `runs`, `body_metrics`, `ankle_logs`, `goals`,
 `recovery` (stub; the future WHOOP sink). See `supabase/README.md`.
+- **`workouts.focus`** (nullable `push|pull|legs|core|mobility|run`) records the session's
+  intent for Trends balance-over-time; set on workout creation. Migration
+  `20260701000004_workout_focus.sql`.
 
 ## Commands
 ```bash
