@@ -1,0 +1,55 @@
+/* ============================================================
+   ATLAS — DESIGN TOKENS  (single source of truth)
+   ------------------------------------------------------------
+   Tailwind v4, CSS-first. This matches the stack Claude Code
+   built (Next 16 + Tailwind v4). Merge this into
+   `src/app/globals.css` (or @import it from there).
+
+   HOW TO RE-THEME THE ENTIRE APP:
+   Everything below is semantic ("bg", "text", "accent") — never
+   raw hex in components. To change the look, edit the values
+   HERE and it propagates everywhere automatically:
+     • New accent color?      -> edit --color-accent (one line)
+     • Lighter/darker theme?  -> edit --color-bg / --color-text
+     • Different typeface?     -> edit --font-display
+     • Tighter/looser layout? -> edit --space-section / --space-screen-x
+   Because no component hardcodes a color, retheming is safe.
+   ============================================================ */
+
+@import "tailwindcss";
+
+@theme {
+  /* ---- COLOR (semantic) --------------------------------------
+     Tailwind auto-generates utilities from these:
+       --color-bg          -> bg-bg
+       --color-text        -> text-text
+       --color-text-muted  -> text-text-muted
+       --color-accent      -> text-accent / bg-accent / border-accent
+     ---------------------------------------------------------- */
+  --color-bg:          #131110;              /* app background — warm near-black   */
+  --color-surface:     #1B1815;              /* elevated surface (reserved; UI is flat today) */
+  --color-text:        #ECE5D9;              /* primary text — warm bone           */
+  --color-text-muted:  #948A7C;              /* secondary text                     */
+  --color-text-faint:  #5C554B;              /* tertiary / hints / inactive        */
+  --color-line:        rgba(236,229,217,.09);/* hairline dividers                  */
+  --color-accent:      #D2924A;              /* THE accent — progress, active, primary action */
+  --color-accent-ink:  #2A1C08;              /* text/icon placed on an accent fill */
+
+  /* ---- TYPE --------------------------------------------------
+     Load Space Grotesk via next/font (see design system doc) and
+     point --font-display at its variable for production. Utility: font-display
+     ---------------------------------------------------------- */
+  --font-display: "Space Grotesk", ui-sans-serif, -apple-system, system-ui, sans-serif;
+
+  /* ---- RADIUS ------------------------------------------------ */
+  --radius-control: 12px;   /* keypad keys, primary "Log set" button */
+  --radius-card:    12px;   /* reserved for future card surfaces     */
+
+  /* ---- LAYOUT RHYTHM (screen-level) -------------------------- */
+  --space-screen-x: 28px;   /* left/right screen padding             */
+  --space-section:  26px;   /* vertical gap between major sections    */
+}
+
+/* Tabular figures wherever numbers matter (weights, reps, timers).
+   Keeps digits from jittering as values change. */
+:root { font-feature-settings: "tnum" 1; }

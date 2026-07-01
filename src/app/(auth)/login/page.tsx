@@ -34,36 +34,29 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-6">
+    <main className="flex min-h-dvh flex-col items-center justify-center px-7">
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight text-accent">
+        <div className="mb-10 text-center">
+          <h1 className="text-3xl font-medium tracking-tight text-accent">
             Atlas
           </h1>
-          <p className="mt-2 text-sm text-muted">
+          <p className="mt-2 text-sm text-text-muted">
             Sign in to log your training.
           </p>
         </div>
 
         {!configured ? (
-          <div className="rounded-2xl border border-border bg-surface p-5 text-sm text-muted">
+          <p className="text-sm leading-relaxed text-text-muted">
             Supabase isn’t configured yet. Copy{" "}
-            <span className="font-mono text-foreground">.env.example</span> to{" "}
-            <span className="font-mono text-foreground">.env.local</span> and
-            set{" "}
-            <span className="font-mono text-foreground">
-              NEXT_PUBLIC_SUPABASE_URL
-            </span>{" "}
-            and{" "}
-            <span className="font-mono text-foreground">
-              NEXT_PUBLIC_SUPABASE_ANON_KEY
-            </span>
-            .
-          </div>
+            <span className="text-text">.env.example</span> to{" "}
+            <span className="text-text">.env.local</span> and set{" "}
+            <span className="text-text">NEXT_PUBLIC_SUPABASE_URL</span> and{" "}
+            <span className="text-text">NEXT_PUBLIC_SUPABASE_ANON_KEY</span>.
+          </p>
         ) : status === "sent" ? (
-          <div className="rounded-2xl border border-border bg-surface p-5 text-center text-sm">
-            <p className="text-foreground">Check your email.</p>
-            <p className="mt-1 text-muted">
+          <div className="text-center text-sm">
+            <p className="text-text">Check your email.</p>
+            <p className="mt-1 text-text-muted">
               We sent a magic link to {email}. Open it on this device to finish
               signing in.
             </p>
@@ -78,12 +71,12 @@ export default function LoginPage() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-foreground outline-none placeholder:text-muted focus:border-accent"
+              className="w-full border-b border-line bg-transparent px-1 py-3 text-text outline-none placeholder:text-text-faint focus:border-accent"
             />
             <button
               type="submit"
               disabled={status === "sending"}
-              className="w-full rounded-xl bg-accent px-4 py-3 font-medium text-background transition-colors hover:bg-accent-strong disabled:opacity-60"
+              className="w-full rounded-control bg-accent px-4 py-3.5 font-medium text-accent-ink transition-opacity hover:opacity-90 disabled:opacity-60"
             >
               {status === "sending" ? "Sending…" : "Send magic link"}
             </button>

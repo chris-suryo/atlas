@@ -2,78 +2,43 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  IconHome,
+  IconBarbell,
+  IconChartBar,
+  type IconProps,
+} from "@tabler/icons-react";
+import type { ComponentType } from "react";
 
-type Tab = {
-  href: string;
-  label: string;
-  icon: () => React.ReactNode;
-};
-
-const iconProps = {
-  width: 24,
-  height: 24,
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 2,
-  strokeLinecap: "round" as const,
-  strokeLinejoin: "round" as const,
-};
-
-const tabs: Tab[] = [
-  {
-    href: "/today",
-    label: "Today",
-    icon: () => (
-      <svg {...iconProps} aria-hidden="true">
-        <rect x="3" y="4" width="18" height="18" rx="2" />
-        <path d="M3 10h18M8 2v4M16 2v4" />
-        <path d="M9 16l2 2 4-4" />
-      </svg>
-    ),
-  },
-  {
-    href: "/log",
-    label: "Log",
-    icon: () => (
-      <svg {...iconProps} aria-hidden="true">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 8v8M8 12h8" />
-      </svg>
-    ),
-  },
-  {
-    href: "/trends",
-    label: "Trends",
-    icon: () => (
-      <svg {...iconProps} aria-hidden="true">
-        <path d="M3 3v18h18" />
-        <path d="M7 15l4-5 3 3 5-7" />
-      </svg>
-    ),
-  },
-];
+const tabs: { href: string; label: string; Icon: ComponentType<IconProps> }[] =
+  [
+    { href: "/today", label: "Today", Icon: IconHome },
+    { href: "/log", label: "Log", Icon: IconBarbell },
+    { href: "/trends", label: "Trends", Icon: IconChartBar },
+  ];
 
 export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur-sm">
-      <ul className="mx-auto flex max-w-md pb-[env(safe-area-inset-bottom)]">
-        {tabs.map((tab) => {
-          const active =
-            pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+    <nav className="shrink-0 pb-[env(safe-area-inset-bottom)]">
+      <ul className="flex px-8 pb-1 pt-2">
+        {tabs.map(({ href, label, Icon }) => {
+          const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
-            <li key={tab.href} className="flex-1">
+            <li key={href} className="flex-1">
               <Link
-                href={tab.href}
+                href={href}
                 aria-current={active ? "page" : undefined}
-                className={`flex flex-col items-center gap-1 py-2.5 text-xs font-medium transition-colors ${
-                  active ? "text-accent" : "text-muted hover:text-foreground"
+                className={`relative flex flex-col items-center gap-1.5 py-1 text-[11px] ${
+                  active ? "text-accent" : "text-text-faint"
                 }`}
               >
-                {tab.icon()}
-                <span>{tab.label}</span>
+                {active && (
+                  <span className="absolute -top-1 h-0.5 w-4 rounded-full bg-accent" />
+                )}
+                <Icon size={22} stroke={1.75} />
+                <span>{label}</span>
               </Link>
             </li>
           );

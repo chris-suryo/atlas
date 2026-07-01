@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atlas — Log (list mode) reference</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500&display=swap">
+<style>
+/* Token names mirror atlas-theme.css. In the real app these come from @theme;
+   here they're on :root so this file is self-contained. */
+:root{
+  --color-bg:#131110; --color-text:#ECE5D9; --color-text-muted:#948A7C;
+  --color-text-faint:#5C554B; --color-line:rgba(236,229,217,.09); --color-accent:#D2924A;
+  --color-accent-ink:#2A1C08; --radius-control:12px;
+  --font-display:"Space Grotesk",-apple-system,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;font-family:var(--font-display);font-feature-settings:"tnum" 1}
+body{background:#0b0b0b;display:flex;justify-content:center;padding:20px;min-height:100vh}
+.dia{width:7px;height:7px;background:var(--color-accent);transform:rotate(45deg);flex:none}
+.nz{color:var(--color-text-faint);font-size:20px;line-height:1;cursor:pointer;padding:4px;user-select:none}
+.nz:active{transform:scale(.85);color:var(--color-text-muted)}
+.sug{display:flex;align-items:center;padding:13px 0;border-top:1px solid var(--color-line);font-size:14px;cursor:pointer}
+.sug:active{opacity:.5}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--color-text-faint);font-size:11px;position:relative;cursor:pointer}
+.tab i{font-size:22px}.tab.on{color:var(--color-accent)}
+.num{font-size:34px;font-weight:500;color:var(--color-text);letter-spacing:-.5px}
+</style>
+</head>
+<body>
+<div style="width:100%;max-width:360px;background:#000;border-radius:52px;padding:4px">
+<div style="position:relative;height:764px;background:var(--color-bg);border-radius:48px;overflow:hidden;display:flex;flex-direction:column;color:var(--color-text)">
+
+<div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:92px;height:27px;background:#000;border-radius:16px;z-index:2"></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:15px 30px 0;font-size:14px;font-weight:500">
+<span>9:41</span>
+<span style="display:flex;align-items:center;gap:7px">
+<span style="display:flex;align-items:flex-end;gap:2px;height:11px"><span style="width:3px;height:4px;background:var(--color-text);border-radius:1px"></span><span style="width:3px;height:6px;background:var(--color-text);border-radius:1px"></span><span style="width:3px;height:8px;background:var(--color-text);border-radius:1px"></span><span style="width:3px;height:11px;background:var(--color-text);border-radius:1px"></span></span>
+<span style="display:inline-block;width:23px;height:12px;border:1px solid var(--color-text-muted);border-radius:3px;position:relative"><span style="position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:16px;background:var(--color-text);border-radius:1px"></span></span>
+</span>
+</div>
+
+<div style="padding:26px 28px 0;display:flex;justify-content:space-between;align-items:baseline">
+<span style="font-size:12px;color:var(--color-text-muted)">Push · Mon 30 <span style="color:var(--color-text-faint)">·  18:24</span></span>
+<span style="font-size:12px;color:var(--color-text-faint)">5 sets · 4.8k lb</span>
+</div>
+
+<div style="flex:1;padding:0 28px;display:flex;flex-direction:column;justify-content:center">
+
+<div style="display:flex;align-items:center;justify-content:space-between">
+<div style="display:flex;align-items:center;gap:11px"><span class="dia"></span><span style="font-size:19px;font-weight:500">Incline DB Press</span></div>
+<span style="font-size:12px;color:var(--color-text-faint)">Set 3</span>
+</div>
+
+<div style="display:flex;align-items:center;margin-top:26px">
+<span class="nz" onclick="aw(-5)">−</span><span class="num" id="w" style="margin-left:6px">60</span>
+<span style="font-size:14px;color:var(--color-text-muted);margin:0 4px">lb</span><span class="nz" onclick="aw(5)">+</span>
+<span style="font-size:20px;color:var(--color-text-faint);margin:0 16px">×</span>
+<span class="nz" onclick="ar(-1)">−</span><span class="num" id="r" style="margin-left:6px">10</span><span class="nz" onclick="ar(1)">+</span>
+</div>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:18px">
+<span style="font-size:13px;color:var(--color-text-muted)">RPE 8 <span style="color:var(--color-text-faint);margin:0 6px">·</span> <span id="prog" style="color:var(--color-accent)">+2 reps vs last 60×8</span></span>
+<span onclick="logset()" style="color:var(--color-accent);display:flex;align-items:center;gap:6px;font-size:15px;font-weight:500;cursor:pointer"><i class="ti ti-check" style="font-size:19px"></i>Log</span>
+</div>
+
+<div style="display:flex;align-items:center;gap:10px;margin-top:26px;font-size:13px;color:var(--color-text-muted)">
+<i class="ti ti-clock" style="font-size:15px;color:var(--color-text-faint)"></i>
+<span>Resting <span id="rt" style="color:var(--color-text)">0:16</span> <span style="color:var(--color-text-faint)">/ 2:00</span></span>
+<div style="flex:1;height:2px;background:var(--color-line);border-radius:2px;position:relative;overflow:hidden"><div id="rbar" style="position:absolute;left:0;top:0;bottom:0;width:13%;background:var(--color-accent)"></div></div>
+<span onclick="skip()" style="color:var(--color-text-faint);font-size:12px;cursor:pointer">Skip</span>
+</div>
+
+<div style="margin-top:26px">
+<div style="display:flex;align-items:center;padding:13px 0;border-top:1px solid var(--color-line);font-size:14px"><span style="width:54px;color:var(--color-text-faint)">Set 1</span><span style="flex:1;color:var(--color-text-muted)">60 × 10</span><span style="color:var(--color-text-faint);margin-right:16px">RPE 8</span><i class="ti ti-check" style="color:var(--color-accent);font-size:16px"></i></div>
+<div style="display:flex;align-items:center;padding:13px 0;border-top:1px solid var(--color-line);font-size:14px"><span style="width:54px;color:var(--color-text-faint)">Set 2</span><span style="flex:1;color:var(--color-text-muted)">60 × 10</span><span style="color:var(--color-text-faint);margin-right:16px">RPE 8</span><i class="ti ti-check" style="color:var(--color-accent);font-size:16px"></i></div>
+</div>
+
+<div style="margin-top:30px">
+<div style="font-size:12px;color:var(--color-text-muted);margin-bottom:2px">Up next</div>
+<div class="sug" onclick="pop(this)"><span style="flex:1;color:var(--color-text)">Lat Pulldown</span><span style="color:var(--color-text-faint);font-size:12px;margin-right:16px">balances push</span><i class="ti ti-plus" style="font-size:16px;color:var(--color-text-muted)"></i></div>
+<div class="sug" onclick="pop(this)"><span class="dia" style="margin-right:11px"></span><span style="flex:1;color:var(--color-text)">Leg Press</span><span style="color:var(--color-text-faint);font-size:12px;margin-right:16px">you skip legs</span><i class="ti ti-plus" style="font-size:16px;color:var(--color-text-muted)"></i></div>
+<div class="sug" onclick="pop(this)"><span style="flex:1;color:var(--color-text)">Cable Lateral Raise</span><span style="color:var(--color-text-faint);font-size:12px;margin-right:16px">your favorite</span><i class="ti ti-plus" style="font-size:16px;color:var(--color-text-muted)"></i></div>
+</div>
+
+</div>
+
+<div style="padding:15px 26px;border-top:1px solid var(--color-line);display:flex;align-items:center;gap:14px">
+<i class="ti ti-microphone" style="font-size:21px;color:var(--color-accent)"></i>
+<span style="flex:1;font-size:15px;color:var(--color-text-faint)">Say or type your set</span>
+<i class="ti ti-arrow-up" style="font-size:19px;color:var(--color-text-faint)"></i>
+</div>
+
+<div style="display:flex;padding:8px 30px 4px">
+<span class="tab"><i class="ti ti-home"></i>Today</span>
+<span class="tab on"><span style="position:absolute;top:-7px;width:16px;height:2px;background:var(--color-accent);border-radius:2px"></span><i class="ti ti-barbell"></i>Log</span>
+<span class="tab"><i class="ti ti-chart-bar"></i>Trends</span>
+</div>
+<div style="display:flex;justify-content:center;padding-bottom:9px"><div style="width:126px;height:5px;border-radius:3px;background:#2E2A25"></div></div>
+
+</div></div>
+<script>
+var w=60,r=10,lW=60,lR=8,rest=16,tgt=120;
+function fmt(s){var m=Math.floor(s/60),ss=s%60;return m+':'+(ss<10?'0':'')+ss;}
+function u(){document.getElementById('w').textContent=Math.round(w);document.getElementById('r').textContent=Math.round(r);var p=document.getElementById('prog');
+if(w>lW){p.textContent='+'+Math.round(w-lW)+' lb vs last '+lW+'×'+lR;p.style.color='var(--color-accent)';}
+else if(w<lW){p.textContent='vs last '+lW+'×'+lR;p.style.color='var(--color-text-faint)';}
+else if(r>lR){p.textContent='+'+Math.round(r-lR)+' reps vs last '+lW+'×'+lR;p.style.color='var(--color-accent)';}
+else if(r===lR){p.textContent='matched last '+lW+'×'+lR;p.style.color='var(--color-text-muted)';}
+else{p.textContent='vs last '+lW+'×'+lR;p.style.color='var(--color-text-faint)';}}
+function rb(){document.getElementById('rt').textContent=fmt(rest);document.getElementById('rbar').style.width=Math.min(100,Math.round(rest/tgt*100))+'%';}
+setInterval(function(){rest++;rb();},1000);
+function aw(d){w=Math.max(5,w+d);u();}function ar(d){r=Math.max(1,r+d);u();}
+function pop(b){b.style.transform='scale(.97)';setTimeout(function(){b.style.transform='';},130);}
+function logset(){rest=0;rb();}function skip(){rest=0;rb();}
+u();rb();
+</script>
+</body>
+</html>

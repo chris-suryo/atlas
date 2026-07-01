@@ -19,10 +19,8 @@ export default async function AppLayout({
   if (!user) redirect("/login");
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col">
-      <main className="flex-1 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-24">
-        {children}
-      </main>
+    <div className="mx-auto flex h-dvh max-w-md flex-col overflow-hidden">
+      <main className="min-h-0 flex-1">{children}</main>
       <BottomNav />
     </div>
   );

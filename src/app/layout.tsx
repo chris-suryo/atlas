@@ -1,5 +1,13 @@
 import type { Metadata, Viewport } from "next";
+import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-space-grotesk",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   applicationName: "Atlas",
@@ -26,7 +34,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0e1a",
+  themeColor: "#131110",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -38,7 +46,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className={`${spaceGrotesk.variable} h-full`}>
       <body className="min-h-full antialiased">{children}</body>
     </html>
   );

@@ -9,9 +9,9 @@ import { dirname, join } from "node:path";
 const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "public", "icons");
 mkdirSync(OUT, { recursive: true });
 
-// ---- palette ----
-const BG = [10, 14, 26]; // #0A0E1A deep slate
-const FG = [52, 211, 153]; // #34D399 emerald
+// ---- palette (matches docs/design tokens: warm near-black + amber) ----
+const BG = [19, 17, 16]; // #131110 warm near-black
+const FG = [210, 146, 74]; // #D2924A amber accent
 
 // ---- PNG encoding (RGBA, 8-bit) ----
 const CRC_TABLE = (() => {

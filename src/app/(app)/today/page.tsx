@@ -10,30 +10,22 @@ export default async function TodayPage() {
   const email = data?.user?.email ?? null;
 
   return (
-    <section className="space-y-6">
+    <div className="h-full overflow-y-auto px-7 pb-6 pt-[max(1.5rem,env(safe-area-inset-top))]">
       <header className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Today</h1>
-          {email && (
-            <p className="mt-1 text-sm text-muted">Signed in as {email}</p>
-          )}
-        </div>
+        <h1 className="text-[26px] font-medium tracking-tight">Today</h1>
         <form action="/auth/signout" method="post">
-          <button
-            type="submit"
-            className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted hover:text-foreground"
-          >
+          <button type="submit" className="py-1 text-xs text-text-faint">
             Sign out
           </button>
         </form>
       </header>
 
-      <div className="rounded-2xl border border-border bg-surface p-5">
-        <p className="text-sm text-muted">
-          Milestone 1 placeholder. Your daily overview — planned session,
-          readiness, ankle check — lands in a later milestone.
-        </p>
-      </div>
-    </section>
+      {email && <p className="mt-1 text-xs text-text-faint">{email}</p>}
+
+      <p className="mt-10 text-sm leading-relaxed text-text-muted">
+        Milestone 1 placeholder. Your daily overview — planned session,
+        readiness, ankle check — lands in a later milestone.
+      </p>
+    </div>
   );
 }
