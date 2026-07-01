@@ -2,34 +2,46 @@
 
 import { useState } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { ensureSeeded } from "@/lib/actions/seed";
 
 export default function LoginPage() {
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
-    "idle",
-  );
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const configured = isSupabaseConfigured();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setStatus("sending");
+    setLoading(true);
     setError(null);
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-      });
+      const { data, error } =
+        mode === "signin"
+          ? await supabase.auth.signInWithPassword({ email, password })
+          : await supabase.auth.signUp({ email, password });
+
       if (error) {
         setError(error.message);
-        setStatus("error");
-      } else {
-        setStatus("sent");
+        setLoading(false);
+        return;
       }
+      if (!data.session) {
+        // Only happens if email confirmation is still enabled on the project.
+        setError("Check your email to confirm your account, then sign in.");
+        setLoading(false);
+        return;
+      }
+      // Seed the library on first sign-in; don't block login if it hiccups.
+      try {
+        await ensureSeeded();
+      } catch {}
+      window.location.assign("/today");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
-      setStatus("error");
+      setLoading(false);
     }
   }
 
@@ -41,26 +53,18 @@ export default function LoginPage() {
             Atlas
           </h1>
           <p className="mt-2 text-sm text-text-muted">
-            Sign in to log your training.
+            {mode === "signin"
+              ? "Sign in to log your training."
+              : "Create your account."}
           </p>
         </div>
 
         {!configured ? (
           <p className="text-sm leading-relaxed text-text-muted">
-            Supabase isn’t configured yet. Copy{" "}
-            <span className="text-text">.env.example</span> to{" "}
-            <span className="text-text">.env.local</span> and set{" "}
+            Supabase isn’t configured yet. Set{" "}
             <span className="text-text">NEXT_PUBLIC_SUPABASE_URL</span> and{" "}
             <span className="text-text">NEXT_PUBLIC_SUPABASE_ANON_KEY</span>.
           </p>
-        ) : status === "sent" ? (
-          <div className="text-center text-sm">
-            <p className="text-text">Check your email.</p>
-            <p className="mt-1 text-text-muted">
-              We sent a magic link to {email}. Open it on this device to finish
-              signing in.
-            </p>
-          </div>
         ) : (
           <form onSubmit={onSubmit} className="space-y-3">
             <input
@@ -73,14 +77,41 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full border-b border-line bg-transparent px-1 py-3 text-text outline-none placeholder:text-text-faint focus:border-accent"
             />
+            <input
+              type="password"
+              required
+              minLength={6}
+              autoComplete={mode === "signin" ? "current-password" : "new-password"}
+              placeholder="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full border-b border-line bg-transparent px-1 py-3 text-text outline-none placeholder:text-text-faint focus:border-accent"
+            />
             <button
               type="submit"
-              disabled={status === "sending"}
+              disabled={loading}
               className="w-full rounded-control bg-accent px-4 py-3.5 font-medium text-accent-ink transition-opacity hover:opacity-90 disabled:opacity-60"
             >
-              {status === "sending" ? "Sending…" : "Send magic link"}
+              {loading
+                ? "…"
+                : mode === "signin"
+                  ? "Sign in"
+                  : "Create account"}
             </button>
             {error && <p className="text-sm text-red-400">{error}</p>}
+
+            <button
+              type="button"
+              onClick={() => {
+                setMode(mode === "signin" ? "signup" : "signin");
+                setError(null);
+              }}
+              className="w-full pt-2 text-center text-xs text-text-faint"
+            >
+              {mode === "signin"
+                ? "First time? Create an account"
+                : "Have an account? Sign in"}
+            </button>
           </form>
         )}
       </div>

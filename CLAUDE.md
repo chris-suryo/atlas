@@ -24,8 +24,8 @@ ground truth). Read it before building any UI.
 Full plan: `/root/.claude/plans/project-atlas-a-sparkling-newt.md`.
 
 ## Milestone 1 status
-- ✅ Scaffold, schema + seed (authored under `supabase/`, not yet applied), magic-link
-  auth, PWA, design tokens + Space Grotesk.
+- ✅ Scaffold, schema (migrations applied), **email+password auth** with first-run
+  auto-seed (`src/lib/actions/seed.ts`), PWA, design tokens + Space Grotesk.
 - **Log screen = keypad + list model** (design §6–§7), NOT ± steppers: tap a number →
   custom NumericKeypad; the NL composer ("say or type") is the alternate entry mode,
   driven by the parser.
@@ -63,10 +63,13 @@ node scripts/generate-icons.mjs   # regenerate PWA icons
 ## Live infrastructure (Milestone 1)
 - **Supabase** project `atlas` — ref `bbzvpcaxqkwmhidyqmhu` (org jfishbowl-01,
   free plan, us-east-1). All 3 migrations applied; RLS verified. Public config
-  (URL + anon key) is committed in `.env.production`. **`supabase/seed.sql` must be
-  run after the first sign-in** (it needs the `auth.users` row to own the rows).
+  (URL + anon key) is committed in `.env.production`. **Auth = email+password**
+  with **email confirmation disabled** (signUp returns a session immediately).
+  The 45-row library is planted by **first-run auto-seed** (`ensureSeeded`,
+  idempotent) on sign-in / first Log load; `supabase/seed.sql` and
+  `src/lib/data/seed-data.ts` hold the same rows.
 - Freed a free-tier active slot by pausing **glenn-events** (`foscibergjhdwqkpsxip`);
   restore it anytime.
 - **Deploy:** Vercel via GitHub repo import; set Production Branch to the feature
-  branch. Auth Site URL + redirect allow-list are configured in the Supabase
-  dashboard (no MCP tool for that).
+  branch. Live at https://atlas-puce-gamma.vercel.app. Email+password needs no
+  redirect-URL config (Site URL only matters if magic links are re-enabled).
