@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { IconCheck } from "@tabler/icons-react";
+import { IconCheck, IconClock, IconPlus } from "@tabler/icons-react";
 import { parseLine, type ExerciseLite } from "@/lib/parser";
 import type { LastPerf, SetShape } from "@/lib/data/types";
 import NumericKeypad from "@/components/log/NumericKeypad";
@@ -47,13 +47,49 @@ function upsertEntry(prev: Entry[], ex: ExerciseLite, add: SetShape[]): Entry[] 
   return copy;
 }
 
+const REST_TARGET_S = 120;
+
+/** Rule-based "Up next": blend of preference (frequency) and gap (anchors /
+ * untrained categories today). Gets smarter as history grows. */
+function suggestUpNext(
+  library: ExerciseLite[],
+  entries: Entry[],
+  sessions: Record<string, number>,
+): { ex: ExerciseLite; reason: string }[] {
+  const doneToday = new Set(entries.map((e) => e.exercise.id));
+  const catsToday = new Set(entries.map((e) => e.exercise.category ?? ""));
+  return library
+    .filter((ex) => !doneToday.has(ex.id))
+    .map((ex) => {
+      const freq = sessions[ex.id] ?? 0;
+      let score = Math.min(3, freq * 0.5);
+      let reason = "";
+      if (ex.is_anchor) {
+        score += 5;
+        reason = "anchor";
+      }
+      if (ex.category && !catsToday.has(ex.category)) {
+        score += 3;
+        if (!reason) reason = `adds ${ex.category}`;
+      }
+      if (!reason && freq >= 3) reason = "your favorite";
+      if (!reason) reason = ex.category ? `adds ${ex.category}` : "suggested";
+      return { ex, reason, score };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map(({ ex, reason }) => ({ ex, reason }));
+}
+
 export default function LogScreen({
   exercises,
   lastByExercise,
+  sessionsByExercise,
   dateLabel,
 }: {
   exercises: ExerciseLite[];
   lastByExercise: Record<string, LastPerf>;
+  sessionsByExercise: Record<string, number>;
   dateLabel: string;
 }) {
   const [library, setLibrary] = useState(exercises);
@@ -67,6 +103,7 @@ export default function LogScreen({
   const [error, setError] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState(0);
+  const [restStartedAt, setRestStartedAt] = useState<number | null>(null);
 
   const workoutIdRef = useRef<string | null>(null);
   const chainRef = useRef<Promise<void>>(Promise.resolve());
@@ -139,6 +176,7 @@ export default function LogScreen({
       entries.find((e) => e.exercise.id === ex.id)?.sets.length ?? 0;
     setEntries((prev) => upsertEntry(prev, ex, sets));
     persist(ex.id, sets, startIndex);
+    setRestStartedAt(clockNow());
     setCurrentId(ex.id);
     const lastSet = sets[sets.length - 1];
     setDraft({
@@ -160,6 +198,7 @@ export default function LogScreen({
     const startIndex = currentSets.length;
     setEntries((prev) => upsertEntry(prev, current, [set]));
     persist(current.id, [set], startIndex);
+    setRestStartedAt(clockNow());
     setField("weight"); // auto-advance, keypad primed with same values
   }
 
@@ -221,6 +260,9 @@ export default function LogScreen({
 
   const prog = progression(draft, last);
   const elapsed = startedAt != null ? Math.max(0, nowMs - startedAt) : 0;
+  const restElapsed =
+    restStartedAt != null ? Math.max(0, nowMs - restStartedAt) : 0;
+  const upNextList = suggestUpNext(library, entries, sessionsByExercise);
 
   return (
     <div className="relative flex h-full flex-col">
@@ -303,6 +345,34 @@ export default function LogScreen({
               </span>
             </div>
 
+            {restStartedAt != null && (
+              <div className="mt-6 flex items-center gap-2.5 text-[13px] text-text-muted">
+                <IconClock size={15} className="text-text-faint" />
+                <span>
+                  Resting{" "}
+                  <span className="text-text">{fmtClock(restElapsed)}</span>{" "}
+                  <span className="text-text-faint">
+                    / {fmtClock(REST_TARGET_S * 1000)}
+                  </span>
+                </span>
+                <div className="relative h-0.5 flex-1 overflow-hidden rounded-full bg-line">
+                  <div
+                    className="absolute inset-y-0 left-0 bg-accent"
+                    style={{
+                      width: `${Math.min(100, (restElapsed / (REST_TARGET_S * 1000)) * 100)}%`,
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRestStartedAt(null)}
+                  className="text-xs text-text-faint"
+                >
+                  Skip
+                </button>
+              </div>
+            )}
+
             {mode === "list" && currentSets.length > 0 && (
               <div className="mt-7">
                 {currentSets.map((s, i) => (
@@ -319,6 +389,27 @@ export default function LogScreen({
                     )}
                     <IconCheck size={16} className="text-accent" />
                   </div>
+                ))}
+              </div>
+            )}
+
+            {mode === "list" && upNextList.length > 0 && (
+              <div className="mt-8">
+                <div className="mb-1 text-xs text-text-muted">Up next</div>
+                {upNextList.map(({ ex, reason }) => (
+                  <button
+                    key={ex.id}
+                    type="button"
+                    onClick={() => startExercise(ex)}
+                    className="flex w-full items-center border-t border-line py-3 text-left text-sm"
+                  >
+                    {ex.is_anchor && (
+                      <span className="mr-2.5 block h-[7px] w-[7px] shrink-0 rotate-45 bg-accent" />
+                    )}
+                    <span className="flex-1 text-text">{ex.name}</span>
+                    <span className="mr-4 text-xs text-text-faint">{reason}</span>
+                    <IconPlus size={16} className="text-text-muted" />
+                  </button>
                 ))}
               </div>
             )}

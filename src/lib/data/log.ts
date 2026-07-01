@@ -43,24 +43,30 @@ type SetRow = {
     | null;
 };
 
+export type History = {
+  /** most-recent session's sets per exercise (for "last" + progression) */
+  last: Record<string, LastPerf>;
+  /** distinct-workout count per exercise (for "Up next" preference) */
+  sessions: Record<string, number>;
+};
+
 /**
- * For each exercise, the sets from its most-recent workout. Fetches all sets
- * (fine for a single user) and reduces in JS — most recent workout per exercise.
+ * Reduces all of the user's sets once: the most-recent workout per exercise
+ * plus how many distinct workouts included each exercise. Fine for a single
+ * user; revisit with a view/materialization as history grows.
  */
-export async function getLastPerformance(): Promise<Record<string, LastPerf>> {
+export async function getHistory(): Promise<History> {
   const supabase = await createClient();
-  if (!supabase) return {};
+  if (!supabase) return { last: {}, sessions: {} };
   const { data } = await supabase
     .from("workout_sets")
     .select(
       "weight_lbs, reps, rpe, set_index, exercise_id, workout_id, workouts!inner(date, created_at)",
     );
   const rows = (data ?? []) as unknown as SetRow[];
-
   const meta = (r: SetRow) =>
     Array.isArray(r.workouts) ? r.workouts[0] : r.workouts;
 
-  // newest workout first
   rows.sort((a, b) => {
     const wa = meta(a);
     const wb = meta(b);
@@ -70,22 +76,27 @@ export async function getLastPerformance(): Promise<Record<string, LastPerf>> {
   });
 
   const chosen: Record<string, string> = {};
-  const byEx: Record<string, LastPerf> = {};
+  const last: Record<string, LastPerf> = {};
+  const seenWorkouts: Record<string, Set<string>> = {};
   for (const r of rows) {
     const w = meta(r);
     if (!w) continue;
+    (seenWorkouts[r.exercise_id] ??= new Set()).add(r.workout_id);
     if (!(r.exercise_id in chosen)) {
       chosen[r.exercise_id] = r.workout_id;
-      byEx[r.exercise_id] = { date: w.date, sets: [], summary: "" };
+      last[r.exercise_id] = { date: w.date, sets: [], summary: "" };
     }
     if (chosen[r.exercise_id] === r.workout_id) {
-      byEx[r.exercise_id].sets.push({
+      last[r.exercise_id].sets.push({
         weight_lbs: r.weight_lbs,
         reps: r.reps,
         rpe: r.rpe,
       });
     }
   }
-  for (const id of Object.keys(byEx)) byEx[id].summary = summarize(byEx[id].sets);
-  return byEx;
+  for (const id of Object.keys(last)) last[id].summary = summarize(last[id].sets);
+  const sessions: Record<string, number> = {};
+  for (const id of Object.keys(seenWorkouts)) sessions[id] = seenWorkouts[id].size;
+
+  return { last, sessions };
 }
