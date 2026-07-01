@@ -59,3 +59,14 @@ npm run lint
 npm run test           # vitest (parser)
 node scripts/generate-icons.mjs   # regenerate PWA icons
 ```
+
+## Live infrastructure (Milestone 1)
+- **Supabase** project `atlas` — ref `bbzvpcaxqkwmhidyqmhu` (org jfishbowl-01,
+  free plan, us-east-1). All 3 migrations applied; RLS verified. Public config
+  (URL + anon key) is committed in `.env.production`. **`supabase/seed.sql` must be
+  run after the first sign-in** (it needs the `auth.users` row to own the rows).
+- Freed a free-tier active slot by pausing **glenn-events** (`foscibergjhdwqkpsxip`);
+  restore it anytime.
+- **Deploy:** Vercel via GitHub repo import; set Production Branch to the feature
+  branch. Auth Site URL + redirect allow-list are configured in the Supabase
+  dashboard (no MCP tool for that).
