@@ -8,6 +8,7 @@ export type ExerciseLite = {
   is_anchor: boolean;
   default_unit: DefaultUnit;
   category?: string | null;
+  tier?: "primary" | "accessory" | null;
 };
 
 export type ParsedSet = {

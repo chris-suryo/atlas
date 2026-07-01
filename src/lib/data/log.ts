@@ -35,7 +35,7 @@ export async function getExercises(): Promise<ExerciseLite[]> {
   if (!supabase) return [];
   const { data } = await supabase
     .from("exercises")
-    .select("id, name, aliases, is_anchor, default_unit, category")
+    .select("id, name, aliases, is_anchor, default_unit, category, tier")
     .order("name");
   return (data ?? []) as ExerciseLite[];
 }
@@ -141,7 +141,7 @@ export async function getActiveWorkout(): Promise<ActiveWorkout | null> {
   const { data: weData } = await supabase
     .from("workout_exercises")
     .select(
-      "id, exercise_id, status, exercises!inner(id, name, aliases, is_anchor, default_unit, category)",
+      "id, exercise_id, status, exercises!inner(id, name, aliases, is_anchor, default_unit, category, tier)",
     )
     .eq("workout_id", w.id)
     .order("order_index");

@@ -29,7 +29,8 @@ Full plan: `/root/.claude/plans/project-atlas-a-sparkling-newt.md`.
 - **Log tab = selection-first flow** (design **§7.5**, supersedes the composer-first
   landing & one-exercise model): **Focus** (Push·Pull·Legs·Core·Mobility / Run / Anything;
   neglected categories read "due" in amber) → **Picker** (search that also parses shorthand,
-  most-used-first, anchors diamond-marked, `last: W×R×S`, one gap-aware "suggested" pinned)
+  grouped **Main lifts** (`tier=primary`) above **Accessories** (`tier=accessory`),
+  most-used-first within each, anchors diamond-marked, `last: W×R×S`, one gap-aware "suggested" pinned)
   → **Session** with a `Plan | Now` segmented toggle. The §6 keypad/rest-timer/progression/
   Up-next are **re-hosted inside "Now"** — reused, not rewritten. Plan = reorderable queue
   (queued/now/done) + `+ Add` + quiet Finish (→ recap). Plan/Now lives inside the Log tab;
@@ -77,6 +78,10 @@ Full plan: `/root/.claude/plans/project-atlas-a-sparkling-newt.md`.
 - **`workout_exercises`** = the ordered plan queue: `workout_id` (fk cascade), `exercise_id`
   (fk restrict), `order_index`, `status ∈ {queued,done}`. Sets stay in `workout_sets`
   keyed by `(workout_id, exercise_id)`. Migration `20260701000005_workout_lifecycle.sql`.
+- **`exercises.tier`** (nullable `primary|accessory`) tiers a lift as compound/main vs
+  isolation/complementary so the Picker groups **Main lifts** above **Accessories** (19
+  primary · 26 accessory across the seed; anchors ⊂ primary). Migration
+  `20260701000006_exercise_tier.sql`; also in `seed-data.ts`/`seed.sql`.
 
 ## Commands
 ```bash

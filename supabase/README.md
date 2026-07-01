@@ -9,6 +9,8 @@ Apply the migrations in filename order, then the seed.
 4. `migrations/20260701000004_workout_focus.sql` — nullable `workouts.focus` (session intent)
 5. `migrations/20260701000005_workout_lifecycle.sql` — `workouts.finished_at` + one-active
    guard; `workout_exercises` (the ordered, statused plan queue) with RLS + `updated_at` trigger
+6. `migrations/20260701000006_exercise_tier.sql` — `exercises.tier` (primary/accessory) +
+   backfill of the 45 seeded rows (Picker groups Main lifts above Accessories)
 
 ## Seed
 - `seed.sql` — 45 exercises with aliases.

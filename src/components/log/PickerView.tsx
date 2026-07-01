@@ -49,13 +49,21 @@ export default function PickerView({
             e.name.toLowerCase().includes(q) ||
             e.aliases.some((a) => a.includes(q)),
         );
-  const sorted = [...matches].sort((a, b) => {
+  const byUse = (a: ExerciseLite, b: ExerciseLite) => {
     const fa = sessionsByExercise[a.id] ?? 0;
     const fb = sessionsByExercise[b.id] ?? 0;
     if (fb !== fa) return fb - fa;
     if (a.is_anchor !== b.is_anchor) return a.is_anchor ? -1 : 1;
     return a.name.localeCompare(b.name);
-  });
+  };
+  // Group like a session is built: compounds (primary) first, then accessories.
+  // Untiered rows (created-on-the-fly) fall in with accessories.
+  const mains = matches.filter((e) => e.tier === "primary").sort(byUse);
+  const accessories = matches.filter((e) => e.tier !== "primary").sort(byUse);
+  const groups = [
+    { key: "main", label: "Main lifts", items: mains },
+    { key: "accessory", label: "Accessories", items: accessories },
+  ].filter((g) => g.items.length > 0);
   const showCreate = q !== "" && matches.length === 0;
 
   return (
@@ -89,28 +97,35 @@ export default function PickerView({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-6">
-        {sorted.map((ex) => {
-          const summary = lastByExercise[ex.id]?.summary;
-          return (
-            <button
-              key={ex.id}
-              type="button"
-              onClick={() => onSelect(ex)}
-              className="flex w-full items-center gap-2.5 border-t border-line py-3.5 text-left"
-            >
-              {ex.is_anchor && (
-                <span className="block h-[7px] w-[7px] shrink-0 rotate-45 bg-accent" />
-              )}
-              <span className="flex-1 text-[15px] text-text">{ex.name}</span>
-              {summary && (
-                <span className="text-xs text-text-faint">last {summary}</span>
-              )}
-              {queuedIds.has(ex.id) && (
-                <span className="ml-3 text-xs text-accent">queued</span>
-              )}
-            </button>
-          );
-        })}
+        {groups.map((group) => (
+          <div key={group.key} className="mt-5 first:mt-4">
+            <p className="text-xs uppercase tracking-wide text-text-faint">
+              {group.label}
+            </p>
+            {group.items.map((ex) => {
+              const summary = lastByExercise[ex.id]?.summary;
+              return (
+                <button
+                  key={ex.id}
+                  type="button"
+                  onClick={() => onSelect(ex)}
+                  className="flex w-full items-center gap-2.5 border-t border-line py-3.5 text-left"
+                >
+                  {ex.is_anchor && (
+                    <span className="block h-[7px] w-[7px] shrink-0 rotate-45 bg-accent" />
+                  )}
+                  <span className="flex-1 text-[15px] text-text">{ex.name}</span>
+                  {summary && (
+                    <span className="text-xs text-text-faint">last {summary}</span>
+                  )}
+                  {queuedIds.has(ex.id) && (
+                    <span className="ml-3 text-xs text-accent">queued</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ))}
 
         {showCreate && (
           <button
