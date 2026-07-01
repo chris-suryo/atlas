@@ -1,14 +1,19 @@
+import { getExercises, getLastPerformance } from "@/lib/data/log";
+import { todayLabel } from "@/lib/date";
+import LogScreen from "./LogScreen";
+
 export const metadata = { title: "Log" };
 
-export default function LogPage() {
+export default async function LogPage() {
+  const [exercises, lastByExercise] = await Promise.all([
+    getExercises(),
+    getLastPerformance(),
+  ]);
   return (
-    <div className="h-full overflow-y-auto px-7 pb-6 pt-[max(1.5rem,env(safe-area-inset-top))]">
-      <h1 className="text-[26px] font-medium tracking-tight">Log</h1>
-      <p className="mt-10 text-sm leading-relaxed text-text-muted">
-        The keypad logger and natural-language composer are being built next,
-        per the design system in{" "}
-        <span className="text-text">docs/design/ATLAS-DESIGN-SYSTEM.md</span>.
-      </p>
-    </div>
+    <LogScreen
+      exercises={exercises}
+      lastByExercise={lastByExercise}
+      dateLabel={todayLabel()}
+    />
   );
 }
