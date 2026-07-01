@@ -33,6 +33,8 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+# Public (browser-exposed, RLS-protected) Supabase config — safe to commit.
+!.env.production
 
 # vercel
 .vercel
