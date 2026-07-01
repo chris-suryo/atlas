@@ -86,14 +86,15 @@ export function assembleRecoveryRows(
 
 /**
  * Pull recent recovery/sleep/cycle from WHOOP and upsert one `recovery` row per
- * local day. Uses the service-role client (RLS-bypassing); returns the day count.
+ * local day. `db` may be the service-role client (cron) or the session client
+ * (owner-RLS, e.g. the connect callback). Returns the day count.
  */
 export async function syncWhoop(
-  admin: SupabaseClient,
+  db: SupabaseClient,
   userId: string,
   days = 14,
 ): Promise<number> {
-  const token = await ensureValidToken(admin, userId);
+  const token = await ensureValidToken(db, userId);
   const start = new Date(Date.now() - days * 86_400_000).toISOString();
   const params = { start };
   const [cycles, recoveries, sleeps] = await Promise.all([
@@ -103,13 +104,19 @@ export async function syncWhoop(
   ]);
 
   const rows = assembleRecoveryRows(userId, cycles, recoveries, sleeps);
+  console.log(
+    `[whoop] sync: fetched cycles=${cycles.length} recoveries=${recoveries.length} sleeps=${sleeps.length} → rows=${rows.length}`,
+  );
   if (rows.length) {
-    const { error } = await admin
+    const { error } = await db
       .from("recovery")
       .upsert(rows, { onConflict: "user_id,date" });
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("[whoop] sync: recovery upsert failed —", error.message);
+      throw new Error(error.message);
+    }
   }
-  await admin
+  await db
     .from("whoop_connection")
     .update({ last_synced_at: new Date().toISOString() })
     .eq("user_id", userId);

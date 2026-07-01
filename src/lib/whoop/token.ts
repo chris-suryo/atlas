@@ -13,14 +13,14 @@ const SKEW_MS = 60_000;
  * A valid WHOOP access token, refreshing if within 60s of expiry. WHOOP rotates
  * the refresh token on every refresh, so the new access+refresh are written
  * atomically via compare-and-swap on the OLD refresh token — a concurrent
- * refresh can't clobber it (the loser re-reads the winner's token). Runs with
- * the service-role client (background jobs have no user session).
+ * refresh can't clobber it (the loser re-reads the winner's token). Works with
+ * the service-role client (cron) or the session client (owner-RLS).
  */
 export async function ensureValidToken(
-  admin: SupabaseClient,
+  db: SupabaseClient,
   userId: string,
 ): Promise<string> {
-  const { data, error } = await admin
+  const { data, error } = await db
     .from("whoop_connection")
     .select("access_token, refresh_token, expires_at")
     .eq("user_id", userId)
@@ -47,8 +47,12 @@ export async function ensureValidToken(
   });
 
   if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error(
+      `[whoop] token refresh failed ${res.status} — ${body.slice(0, 200)}`,
+    );
     // A concurrent refresh may already have rotated it — re-read once.
-    const fresh = await readFresh(admin, userId);
+    const fresh = await readFresh(db, userId);
     if (fresh) return fresh;
     throw new Error(`WHOOP token refresh failed (${res.status}).`);
   }
@@ -60,7 +64,7 @@ export async function ensureValidToken(
   };
   const expiresAt = new Date(Date.now() + tok.expires_in * 1000).toISOString();
 
-  const { data: won } = await admin
+  const { data: won } = await db
     .from("whoop_connection")
     .update({
       access_token: tok.access_token,
@@ -75,15 +79,15 @@ export async function ensureValidToken(
   if (won) return tok.access_token;
 
   // Lost the race — return whatever the winner stored.
-  const fresh = await readFresh(admin, userId);
+  const fresh = await readFresh(db, userId);
   return fresh ?? tok.access_token;
 }
 
 async function readFresh(
-  admin: SupabaseClient,
+  db: SupabaseClient,
   userId: string,
 ): Promise<string | null> {
-  const { data } = await admin
+  const { data } = await db
     .from("whoop_connection")
     .select("access_token, expires_at")
     .eq("user_id", userId)

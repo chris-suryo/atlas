@@ -11,8 +11,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   const { origin } = new URL(request.url);
   const supabase = await createClient();
-  const admin = createAdminClient();
-  if (!supabase || !admin) {
+  if (!supabase) {
     return NextResponse.redirect(`${origin}/today?whoop=unconfigured`, { status: 303 });
   }
   const {
@@ -20,10 +19,12 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.redirect(`${origin}/login`, { status: 303 });
 
+  const db = createAdminClient() ?? supabase; // service-role preferred, session fallback
   try {
-    await syncWhoop(admin, user.id);
+    await syncWhoop(db, user.id);
     return NextResponse.redirect(`${origin}/today?whoop=synced`, { status: 303 });
-  } catch {
+  } catch (e) {
+    console.error("[whoop] manual sync failed —", e instanceof Error ? e.message : String(e));
     return NextResponse.redirect(`${origin}/today?whoop=error`, { status: 303 });
   }
 }

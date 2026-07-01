@@ -11,8 +11,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   const { origin } = new URL(request.url);
   const supabase = await createClient();
-  const admin = createAdminClient();
-  if (!supabase || !admin) {
+  if (!supabase) {
     return NextResponse.redirect(`${origin}/today?whoop=unconfigured`, { status: 303 });
   }
   const {
@@ -20,7 +19,8 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.redirect(`${origin}/login`, { status: 303 });
 
-  const { data: conn } = await admin
+  const db = createAdminClient() ?? supabase; // service-role preferred, session fallback
+  const { data: conn } = await db
     .from("whoop_connection")
     .select("access_token")
     .eq("user_id", user.id)
@@ -44,6 +44,6 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  await admin.from("whoop_connection").delete().eq("user_id", user.id);
+  await db.from("whoop_connection").delete().eq("user_id", user.id);
   return NextResponse.redirect(`${origin}/today?whoop=disconnected`, { status: 303 });
 }
