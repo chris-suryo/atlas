@@ -21,14 +21,23 @@ export async function GET(request: Request) {
   const { data: conns } = await admin.from("whoop_connection").select("user_id");
   const results: { user_id: string; days?: number; error?: string }[] = [];
   for (const c of conns ?? []) {
+    const userId = c.user_id as string;
     try {
-      const days = await syncWhoop(admin, c.user_id as string);
-      results.push({ user_id: c.user_id as string, days });
+      const days = await syncWhoop(admin, userId, "cron");
+      results.push({ user_id: userId, days });
     } catch (e) {
-      results.push({
-        user_id: c.user_id as string,
-        error: e instanceof Error ? e.message : String(e),
-      });
+      const message = e instanceof Error ? e.message : String(e);
+      results.push({ user_id: userId, error: message });
+      // syncWhoop only logs to whoop_debug on reaching its success path — if it
+      // threw earlier (dead refresh token, WHOOP outage), nothing else records
+      // this attempt, so log it here to keep the cron trace complete.
+      try {
+        await admin
+          .from("whoop_debug")
+          .insert({ outcome: "cron_error", detail: `source=cron user=${userId} ${message}`.slice(0, 500) });
+      } catch {
+        // diagnostics are best-effort
+      }
     }
   }
   return Response.json({ ok: true, synced: results.length, results });

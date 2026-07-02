@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
   const db = createAdminClient() ?? supabase; // service-role preferred, session fallback
   try {
-    await syncWhoop(db, user.id);
+    await syncWhoop(db, user.id, "manual");
     return NextResponse.redirect(`${origin}/today?whoop=synced`, { status: 303 });
   } catch (e) {
     console.error("[whoop] manual sync failed —", e instanceof Error ? e.message : String(e));

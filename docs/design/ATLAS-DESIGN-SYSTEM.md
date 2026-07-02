@@ -260,6 +260,12 @@ The plan-first lifecycle is persisted so a session survives reload/background:
 - **M1 core (built):** the full layout with the **shell state** — rings in "connect WHOOP" empty state, recovery-vs-strain empty, rule-based recommendation, tappable ankle ring → `ankle_logs`, weekly-mileage chart from `runs`, countdown, Start pre-seeds Log.
 - **WHOOP ingest (built — the MVP unlock):** OAuth connect + rotating-refresh token store + daily cron/manual Sync/Disconnect (see the ingest spec) populate the `recovery` table → **rings + recovery-vs-strain trend go live** and the §7.3 **recovery modifier** turns on. Empty "Connect WHOOP" state remains until connected.
 - **Fast-follow:** ring detail pages; CalTrak Fuel link; WHOOP webhooks (real-time) + run→import + body-weight.
+- **Polish pass (2026-07-02, post-ingest):** recovery-vs-strain trend gained day tick labels
+  (`text-text-faint`, mirrors the recessive-axis convention). The ankle ring's per-segment
+  wedge tap (fiddly, the reported complaint) was replaced with a closed ring display that
+  opens a tap-to-open 0–10 chip popover on tap — chips styled like §7's segmented-selector
+  convention, popover on `bg-surface` (this token's first real use — previously "reserved for
+  future"). Bottom nav got a `min-h-11` tap target and a trimmed outer bar height.
 
 ---
 

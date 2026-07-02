@@ -7,6 +7,7 @@ import {
   getWhoopStatus,
 } from "@/lib/data/today";
 import { ensureSeeded } from "@/lib/actions/seed";
+import { getUser } from "@/lib/supabase/server";
 import { suggestNext, toSuggestExercise } from "@/lib/suggest";
 import { daysUntilRace } from "@/lib/config/running";
 import { computeFocusMeta } from "../log/util";
@@ -21,7 +22,9 @@ export default async function TodayPage({
   searchParams: Promise<{ whoop?: string }>;
 }) {
   const sp = await searchParams;
-  await ensureSeeded(); // first-run safety net (idempotent)
+  // getUser() is request-memoized — this reuses the layout's own auth check
+  // rather than a 3rd round trip (ensureSeeded no longer derives it itself).
+  await ensureSeeded(await getUser()); // first-run safety net (idempotent)
   const [
     exercises,
     history,

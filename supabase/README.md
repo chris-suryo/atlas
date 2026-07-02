@@ -15,6 +15,8 @@ Apply the migrations in filename order, then the seed.
    backfill of the 45 seeded rows (suggestion engine's muscle-gap signal, §7.3)
 8. `migrations/20260701000008_whoop_connection.sql` — `whoop_connection` OAuth token store
    (one row/user, owner-only RLS + `updated_at` trigger; service-role access for background jobs)
+9. `migrations/20260701000009_whoop_debug_harden.sql` — documents + locks down `whoop_debug`
+   (scratch diagnostic table, not part of the product schema above) to service-role only
 
 ## Seed
 - `seed.sql` — 45 exercises with aliases.

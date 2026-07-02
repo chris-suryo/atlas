@@ -22,7 +22,7 @@ export default function BottomNav() {
 
   return (
     <nav className="shrink-0 pb-[env(safe-area-inset-bottom)]">
-      <ul className="flex px-8 pb-1 pt-2">
+      <ul className="flex px-8 pb-0.5 pt-1">
         {tabs.map(({ href, label, Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
@@ -30,7 +30,7 @@ export default function BottomNav() {
               <Link
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`relative flex flex-col items-center gap-1.5 py-1 text-[11px] ${
+                className={`relative flex min-h-11 flex-col items-center justify-center gap-1.5 text-[11px] ${
                   active ? "text-accent" : "text-text-faint"
                 }`}
               >

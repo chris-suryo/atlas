@@ -135,6 +135,7 @@ export default function NowView({
           <button
             type="button"
             onClick={() => tapField("weight")}
+            aria-label="Weight"
             className={`text-[38px] font-medium tracking-[-0.5px] ${
               keypadOpen && field === "weight" ? "text-accent" : "text-text"
             }`}
@@ -146,6 +147,7 @@ export default function NowView({
           <button
             type="button"
             onClick={() => tapField("reps")}
+            aria-label="Reps"
             className={`text-[38px] font-medium tracking-[-0.5px] ${
               keypadOpen && field === "reps" ? "text-accent" : "text-text"
             }`}

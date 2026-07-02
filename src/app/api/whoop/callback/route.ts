@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
   await log("stored", `whoopUserId=${whoopUserId} via=${admin ? "admin" : "session"}`);
 
   try {
-    const days = await syncWhoop(db!, user.id, 14);
+    const days = await syncWhoop(db!, user.id, "connect");
     await log("connected", `syncDays=${days}`);
   } catch (e) {
     await log("sync_error", e instanceof Error ? e.message : String(e));

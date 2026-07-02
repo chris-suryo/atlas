@@ -4,6 +4,12 @@ import type { RecoveryPoint } from "@/lib/data/today";
 
 const MAX_STRAIN = 21;
 
+/** "6/28" from a YYYY-MM-DD string — pure string split, no Date/timezone risk. */
+function shortLabel(dateISO: string): string {
+  const [, m, d] = dateISO.split("-");
+  return `${parseInt(m, 10)}/${parseInt(d, 10)}`;
+}
+
 /**
  * Recovery-vs-strain 14-day trend (§7.7). Two lines on ONE common 0–100 axis
  * (recovery %, strain indexed as %-of-21) — not a dual-axis chart. Recovery is
@@ -47,10 +53,10 @@ export default function RecoveryStrainTrend({
   }
 
   const W = 300;
-  const H = 52;
+  const H = 62;
   const padX = 2;
   const padT = 4;
-  const padB = 4;
+  const padB = 14;
   const chartH = H - padT - padB;
   const n = points.length;
   const x = (i: number) => padX + (W - 2 * padX) * (n === 1 ? 0 : i / (n - 1));
@@ -63,6 +69,8 @@ export default function RecoveryStrainTrend({
       })
       .filter(Boolean)
       .join(" ");
+  const tickIdx = [...new Set([0, Math.round((n - 1) / 3), Math.round((2 * (n - 1)) / 3), n - 1])];
+  const tickAnchor = (i: number) => (i === 0 ? "start" : i === n - 1 ? "end" : "middle");
 
   return (
     <div>
@@ -84,6 +92,19 @@ export default function RecoveryStrainTrend({
           strokeLinejoin="round"
           className="text-accent"
         />
+        {tickIdx.map((i) => (
+          <text
+            key={`t${i}`}
+            x={x(i)}
+            y={H - 3}
+            textAnchor={tickAnchor(i)}
+            fill="currentColor"
+            className="text-text-faint"
+            style={{ fontSize: 9 }}
+          >
+            {shortLabel(points[i].date)}
+          </text>
+        ))}
       </svg>
     </div>
   );

@@ -87,11 +87,14 @@ export function assembleRecoveryRows(
 /**
  * Pull recent recovery/sleep/cycle from WHOOP and upsert one `recovery` row per
  * local day. `db` may be the service-role client (cron) or the session client
- * (owner-RLS, e.g. the connect callback). Returns the day count.
+ * (owner-RLS, e.g. the connect callback). `source` tags the whoop_debug trace
+ * so a stuck cron/manual/connect sync is distinguishable later. Returns the
+ * day count.
  */
 export async function syncWhoop(
   db: SupabaseClient,
   userId: string,
+  source: "cron" | "manual" | "connect",
   days = 14,
 ): Promise<number> {
   const token = await ensureValidToken(db, userId);
@@ -105,7 +108,7 @@ export async function syncWhoop(
 
   const rows = assembleRecoveryRows(userId, cycles, recoveries, sleeps);
   const partial = rows.filter((r) => r.recovery_pct == null && r.strain != null);
-  const summary = `cycles=${cycles.length} recoveries=${recoveries.length} sleeps=${sleeps.length} rows=${rows.length} datesWithoutRecovery=${partial.map((r) => r.date).join(",") || "none"}`;
+  const summary = `source=${source} cycles=${cycles.length} recoveries=${recoveries.length} sleeps=${sleeps.length} rows=${rows.length} datesWithoutRecovery=${partial.map((r) => r.date).join(",") || "none"}`;
   console.log(`[whoop] sync: ${summary}`);
   try {
     await db.from("whoop_debug").insert({ outcome: "sync_counts", detail: summary.slice(0, 500) });

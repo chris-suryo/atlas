@@ -1,5 +1,6 @@
 "use server";
 
+import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { SEED_EXERCISES } from "@/lib/data/seed-data";
 
@@ -8,15 +9,13 @@ import { SEED_EXERCISES } from "@/lib/data/seed-data";
  * library for auth.uid(). Idempotent and safe to call on every load — the
  * count check skips work once seeded, and the upsert ignores duplicates so
  * concurrent calls can't create dupes (protected by unique(user_id, name)).
+ * Takes `user` from the caller (already fetched for the auth gate or from a
+ * fresh sign-in response) instead of re-deriving it with its own
+ * `auth.getUser()` round trip.
  */
-export async function ensureSeeded(): Promise<void> {
+export async function ensureSeeded(user: User | null): Promise<void> {
   const supabase = await createClient();
-  if (!supabase) return;
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return;
+  if (!supabase || !user) return;
 
   const { count } = await supabase
     .from("exercises")

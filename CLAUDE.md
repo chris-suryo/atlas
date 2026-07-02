@@ -78,6 +78,40 @@ Full plan: `/root/.claude/plans/project-atlas-a-sparkling-newt.md`.
   **Sync** + **Disconnect** on Today. Tokens live in `whoop_connection` (service-role only, via
   `src/lib/supabase/admin.ts`). Public `/privacy` page. **Webhooks/run-import/body-weight = fast-follow.**
 - Trends is a placeholder this milestone.
+- **WHOOP MVP confirmed working + polish pass (2026-07-02):** rings, 14-day recovery-vs-strain
+  trend, daily cron, and the readiness modifier all verified live against real WHOOP data.
+  **Data completeness is real, not a bug** — some nights have cycle+strain but no scored
+  recovery (insufficient sleep that night); confirmed via raw `whoop_debug` counts across 3
+  syncs. Fixes from this pass: **Road to Cambridge** was empty because a run could silently
+  fail to save (`RunForm.tsx` — blank-form taps now disabled via `canSave`; a thrown/rejected
+  save now surfaces an error instead of leaving the button stuck) · **day tick labels** on the
+  recovery-vs-strain chart (`RecoveryStrainTrend.tsx`) · **ankle logging** replaced the fiddly
+  10-wedge tap with a tap-to-open 0–10 chip popover (`AnkleRing.tsx`, `bg-surface` per its
+  "reserved for future" token comment) · **bottom-nav lag**: `loading.tsx` added to
+  today/log/trends, and `ensureSeeded` no longer re-derives the user via its own
+  `auth.getUser()` call — see request-memoized `getUser()` in `src/lib/supabase/server.ts`,
+  shared with the `(app)` layout's own auth gate · nav `Link` gets a `min-h-11` tap target and
+  the outer bar's dead padding is trimmed.
+  **Hardening:** `whoop_debug` (scratch diagnostic table, ad hoc via SQL, not part of the
+  10-table model below) had been left client-`authenticated`-readable — locked to
+  service-role-only (migration `20260701000009_whoop_debug_harden.sql`); every sync write now
+  tags `source=cron|manual|connect` so a stuck overnight cron leaves a distinguishable trace.
+  Removed the temporary `/api/whoop/debug` env-check route (its job — verifying OAuth config
+  during the connect-flow debugging — is done).
+  **Playwright** (`tests/e2e/`, `npm run test:e2e`, needs `.env.test.local` — see
+  `.env.example`) added for autonomous smoke-testing going forward: 5 core flows (sign-in,
+  full Log workout, ankle picker, run form, sign-out) against a dedicated RLS-isolated test
+  account. Authored and config-verified (typecheck/lint clean, portable `executablePath`
+  fallback for pre-installed-Chromium containers) but **not run end-to-end** in the authoring
+  session — that container's network policy blocked outbound access to both Supabase and the
+  Vercel deployment, unrelated to app correctness.
+  **Found, not fixed this pass:** no sign-out control exists anywhere in the UI
+  (`/auth/signout` is POST-only and unlinked from any page); a few save flows (e.g.
+  `NowView`'s `logSet`) don't await/handle their server-action call, the same shape of bug
+  `RunForm` had — worth a systematic pass. **Backlog unchanged otherwise:** Trends tab, WHOOP
+  webhooks/run-import/body-weight, ring detail pages, a full whole-app security/perf audit
+  (this pass covered the two reported bugs plus the newest/highest-risk WHOOP surface, not
+  everything).
 
 ## Stack gotchas
 - **Next.js 16**: middleware is renamed **Proxy** — `src/proxy.ts` (exports `proxy` + `config`).
@@ -113,6 +147,10 @@ Full plan: `/root/.claude/plans/project-atlas-a-sparkling-newt.md`.
   `scope`, `whoop_user_id`, `last_synced_at`, …) = WHOOP OAuth token store, one row/user.
   Owner-only RLS but **all access is via the service-role admin client** (tokens never reach
   the browser). Migration `20260701000008_whoop_connection.sql`.
+- **`whoop_debug`** is *not* part of this product schema — a scratch diagnostic table
+  (`id`, `at`, `outcome`, `detail`; no `user_id`, no RLS-scoped ownership) that every WHOOP
+  route writes a free-text trace row to (booleans/statuses/counts only, never tokens).
+  Service-role only. Migration `20260701000009_whoop_debug_harden.sql`.
 
 ## Commands
 ```bash
@@ -120,6 +158,7 @@ npm run dev            # local dev (needs .env.local — see .env.example)
 npm run build          # production build (passes without env)
 npm run lint
 npm run test           # vitest (parser)
+npm run test:e2e       # playwright smoke tests (needs .env.test.local, see .env.example)
 node scripts/generate-icons.mjs   # regenerate PWA icons
 ```
 

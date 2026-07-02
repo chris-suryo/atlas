@@ -1,5 +1,6 @@
 import { getActiveWorkout, getExercises, getHistory } from "@/lib/data/log";
 import { ensureSeeded } from "@/lib/actions/seed";
+import { getUser } from "@/lib/supabase/server";
 import { computeFocusMeta } from "./util";
 import { STRENGTH_FOCUSES, type Focus } from "./types";
 import LogScreen from "./LogScreen";
@@ -18,7 +19,9 @@ export default async function LogPage({
 }: {
   searchParams: Promise<{ focus?: string }>;
 }) {
-  await ensureSeeded(); // first-run safety net (idempotent)
+  // getUser() is request-memoized — this reuses the layout's own auth check
+  // rather than a 3rd round trip (ensureSeeded no longer derives it itself).
+  await ensureSeeded(await getUser()); // first-run safety net (idempotent)
   const [sp, exercises, history, active] = await Promise.all([
     searchParams,
     getExercises(),

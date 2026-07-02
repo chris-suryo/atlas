@@ -1,5 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
+import type { User } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -35,3 +37,17 @@ export async function createClient() {
     },
   });
 }
+
+/**
+ * The signed-in user, memoized per request (React `cache`) — layout's auth
+ * gate and a page's own lookup (e.g. to pass into `ensureSeeded`) share one
+ * network round trip instead of each calling `auth.getUser()` separately.
+ */
+export const getUser = cache(async (): Promise<User | null> => {
+  const supabase = await createClient();
+  if (!supabase) return null;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+});

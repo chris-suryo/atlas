@@ -65,6 +65,7 @@ export default function RunForm({
   const [effort, setEffort] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const canSave = distance.trim() !== "" || duration.trim() !== "";
 
   async function submit() {
     setSaving(true);
@@ -73,20 +74,25 @@ export default function RunForm({
     const duration_sec = durationToSec(duration);
     const pace =
       distance_miles && duration_sec ? duration_sec / 60 / distance_miles : null;
-    const res = await onSave({
-      distance_miles,
-      duration_sec,
-      pace_min_per_mile: pace != null ? Math.round(pace * 100) / 100 : null,
-      avg_hr: num(avgHr),
-      max_hr: null,
-      elevation_gain_ft: null,
-      ankle_pain_0_10: num(ankle),
-      lateral_tightness_0_10: num(lateral),
-      symptom_trend: trend,
-      perceived_effort: num(effort),
-    });
-    if (!res.ok) {
-      setError(res.error ?? "Could not save.");
+    try {
+      const res = await onSave({
+        distance_miles,
+        duration_sec,
+        pace_min_per_mile: pace != null ? Math.round(pace * 100) / 100 : null,
+        avg_hr: num(avgHr),
+        max_hr: null,
+        elevation_gain_ft: null,
+        ankle_pain_0_10: num(ankle),
+        lateral_tightness_0_10: num(lateral),
+        symptom_trend: trend,
+        perceived_effort: num(effort),
+      });
+      if (!res.ok) {
+        setError(res.error ?? "Could not save.");
+        setSaving(false);
+      }
+    } catch {
+      setError("Could not save — check your connection and try again.");
       setSaving(false);
     }
   }
@@ -169,7 +175,7 @@ export default function RunForm({
         <button
           type="button"
           onClick={submit}
-          disabled={saving}
+          disabled={saving || !canSave}
           className="w-full rounded-control bg-accent px-4 py-3.5 font-medium text-accent-ink disabled:opacity-60"
         >
           {saving ? "Saving…" : "Save run"}

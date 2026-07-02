@@ -35,8 +35,10 @@ export default function LoginPage() {
         return;
       }
       // Seed the library on first sign-in; don't block login if it hiccups.
+      // data.user is already on hand from the sign-in response above, so this
+      // needs no extra auth.getUser() round trip inside ensureSeeded.
       try {
-        await ensureSeeded();
+        await ensureSeeded(data.user);
       } catch {}
       window.location.assign("/today");
     } catch (err) {

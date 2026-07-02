@@ -11,6 +11,12 @@ Host: **Vercel** (route handlers + Vercel Cron), tokens in Supabase. Same repo a
 > **Sync**/**Disconnect**, and Today's rings/trend + the §7.3 recovery modifier now live.
 > Local-day anchoring and the v2 `start`/`nextToken` params were filled in (the spec left them
 > undefined). **Fast-follow (not built):** §5 webhooks, run→import, body-weight, ring detail pages.
+>
+> **Data completeness verified (2026-07-02):** checked live counts against raw `whoop_debug`
+> sync summaries across 3 syncs ~90min apart — consistently `cycles=15 recoveries=13`. WHOOP's
+> own server reports 2 of 15 cycles with no scored recovery (no completed/sufficient sleep that
+> night); cycle+strain still exist for those days (computed all-day from HR), recovery legitimately
+> doesn't. Confirmed we're ingesting everything that exists, not dropping rows.
 
 ---
 
