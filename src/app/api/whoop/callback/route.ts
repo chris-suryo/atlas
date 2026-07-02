@@ -8,46 +8,53 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /** WHOOP redirects here with ?code&state. Verify state, exchange the code, store
- *  tokens (owner-RLS via the session; service-role preferred when available),
- *  backfill, and return to Today. Token writes work through the user session, so
- *  connecting does NOT require SUPABASE_SERVICE_ROLE_KEY (only the cron does). */
+ *  tokens (session or service-role), backfill, and return to Today. Every outcome
+ *  is written to public.whoop_debug so failures are diagnosable without logs. */
 export async function GET(request: NextRequest) {
   const { origin, searchParams } = new URL(request.url);
+  const supabase = await createClient();
+  const admin = createAdminClient();
+  const db = admin ?? supabase; // writer for debug + tokens
+
+  const log = async (outcome: string, detail = "") => {
+    try {
+      if (db) await db.from("whoop_debug").insert({ outcome, detail: detail.slice(0, 500) });
+    } catch {
+      // diagnostics are best-effort
+    }
+  };
   const clear = (res: NextResponse) => {
     res.cookies.set("whoop_oauth_state", "", { maxAge: 0, path: "/" });
     return res;
   };
-  const fail = (reason: string) =>
-    clear(NextResponse.redirect(`${origin}/today?whoop=${reason}`));
+  const fail = async (reason: string, detail = "") => {
+    await log(reason, detail);
+    return clear(NextResponse.redirect(`${origin}/today?whoop=${reason}`));
+  };
 
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const savedState = request.cookies.get("whoop_oauth_state")?.value;
-  if (!code || !state || !savedState || state !== savedState) {
-    console.error("[whoop] callback: state check failed", {
-      hasCode: !!code,
-      hasState: !!state,
-      hasSavedState: !!savedState,
-      match: state === savedState,
-    });
-    return fail("state");
-  }
+  await log(
+    "callback_hit",
+    `hasCode=${!!code} hasState=${!!state} hasSavedCookie=${!!savedState} stateMatch=${state === savedState} adminPresent=${!!admin}`,
+  );
 
-  const supabase = await createClient();
-  if (!supabase) {
-    console.error("[whoop] callback: supabase (session) client unconfigured");
-    return fail("unconfigured");
+  if (!code || !state || !savedState || state !== savedState) {
+    return fail(
+      "state",
+      `hasCode=${!!code} hasState=${!!state} hasSavedCookie=${!!savedState} match=${state === savedState}`,
+    );
   }
+  if (!supabase) return fail("unconfigured", "no session client");
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return clear(NextResponse.redirect(`${origin}/login`));
-
-  const admin = createAdminClient();
-  const db = admin ?? supabase; // prefer service-role; fall back to the session
-  console.log(
-    `[whoop] callback: admin client ${admin ? "present" : "MISSING → using session client"}`,
-  );
+  if (!user) {
+    await log("no_user", "");
+    return clear(NextResponse.redirect(`${origin}/login`));
+  }
 
   const { clientId, clientSecret, redirectUri } = whoopEnv();
   const tokenRes = await fetch(WHOOP_TOKEN_URL, {
@@ -64,10 +71,7 @@ export async function GET(request: NextRequest) {
   });
   if (!tokenRes.ok) {
     const body = await tokenRes.text().catch(() => "");
-    console.error(
-      `[whoop] callback: token exchange failed ${tokenRes.status} — ${body.slice(0, 300)}`,
-    );
-    return fail("token");
+    return fail("token", `status=${tokenRes.status} body=${body}`);
   }
   const tok = (await tokenRes.json()) as {
     access_token: string;
@@ -87,7 +91,7 @@ export async function GET(request: NextRequest) {
     // best-effort
   }
 
-  const { error } = await db.from("whoop_connection").upsert(
+  const { error } = await db!.from("whoop_connection").upsert(
     {
       user_id: user.id,
       whoop_user_id: whoopUserId,
@@ -99,20 +103,14 @@ export async function GET(request: NextRequest) {
     },
     { onConflict: "user_id" },
   );
-  if (error) {
-    console.error("[whoop] callback: token store failed —", error.message);
-    return fail("store");
-  }
-  console.log("[whoop] callback: tokens stored for user", user.id);
+  if (error) return fail("store", `via=${admin ? "admin" : "session"} ${error.message}`);
+  await log("stored", `whoopUserId=${whoopUserId} via=${admin ? "admin" : "session"}`);
 
   try {
-    const days = await syncWhoop(db, user.id, 14);
-    console.log(`[whoop] callback: initial sync upserted ${days} day(s)`);
+    const days = await syncWhoop(db!, user.id, 14);
+    await log("connected", `syncDays=${days}`);
   } catch (e) {
-    console.error(
-      "[whoop] callback: initial sync failed —",
-      e instanceof Error ? e.message : String(e),
-    );
+    await log("sync_error", e instanceof Error ? e.message : String(e));
   }
   return clear(NextResponse.redirect(`${origin}/today?whoop=connected`));
 }
