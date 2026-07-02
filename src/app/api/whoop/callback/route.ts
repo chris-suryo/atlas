@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { WHOOP_API_BASE, WHOOP_TOKEN_URL, whoopEnv } from "@/lib/whoop/config";
+import { WHOOP_API_BASE, whoopEnv } from "@/lib/whoop/config";
+import { whoopTokenExchange } from "@/lib/whoop/oauth";
 import { syncWhoop } from "@/lib/whoop/sync";
 
 export const runtime = "nodejs";
@@ -56,29 +57,16 @@ export async function GET(request: NextRequest) {
     return clear(NextResponse.redirect(`${origin}/login`));
   }
 
-  const { clientId, clientSecret, redirectUri } = whoopEnv();
-  const tokenRes = await fetch(WHOOP_TOKEN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    cache: "no-store",
-    body: new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      redirect_uri: redirectUri,
-      client_id: clientId,
-      client_secret: clientSecret,
-    }),
+  const { redirectUri } = whoopEnv();
+  const exchange = await whoopTokenExchange({
+    grant_type: "authorization_code",
+    code,
+    redirect_uri: redirectUri,
   });
-  if (!tokenRes.ok) {
-    const body = await tokenRes.text().catch(() => "");
-    return fail("token", `status=${tokenRes.status} body=${body}`);
+  if (!exchange.ok) {
+    return fail("token", `status=${exchange.status} method=${exchange.method} body=${exchange.body}`);
   }
-  const tok = (await tokenRes.json()) as {
-    access_token: string;
-    refresh_token: string;
-    expires_in: number;
-    scope?: string;
-  };
+  const tok = exchange.token;
 
   let whoopUserId: number | null = null;
   try {

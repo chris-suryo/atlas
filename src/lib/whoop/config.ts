@@ -11,10 +11,12 @@ export const WHOOP_SCOPE =
   "read:recovery read:cycles read:sleep read:workout read:profile read:body_measurement offline";
 
 export function whoopEnv() {
+  // Trim: a trailing newline/space on a pasted secret is a common cause of
+  // 401 invalid_client at the token endpoint.
   return {
-    clientId: process.env.WHOOP_CLIENT_ID ?? "",
-    clientSecret: process.env.WHOOP_CLIENT_SECRET ?? "",
-    redirectUri: process.env.WHOOP_REDIRECT_URI ?? "",
+    clientId: (process.env.WHOOP_CLIENT_ID ?? "").trim(),
+    clientSecret: (process.env.WHOOP_CLIENT_SECRET ?? "").trim(),
+    redirectUri: (process.env.WHOOP_REDIRECT_URI ?? "").trim(),
   };
 }
 

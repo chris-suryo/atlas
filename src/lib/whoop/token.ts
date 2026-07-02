@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { WHOOP_TOKEN_URL, whoopEnv } from "./config";
+import { whoopTokenExchange } from "./oauth";
 
 type Conn = {
   access_token: string;
@@ -32,36 +32,23 @@ export async function ensureValidToken(
     return conn.access_token;
   }
 
-  const { clientId, clientSecret } = whoopEnv();
-  const res = await fetch(WHOOP_TOKEN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    cache: "no-store",
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      refresh_token: conn.refresh_token,
-      scope: "offline", // keep receiving a rotated refresh token
-      client_id: clientId,
-      client_secret: clientSecret,
-    }),
+  const exchange = await whoopTokenExchange({
+    grant_type: "refresh_token",
+    refresh_token: conn.refresh_token,
+    scope: "offline", // keep receiving a rotated refresh token
   });
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
+  if (!exchange.ok) {
     console.error(
-      `[whoop] token refresh failed ${res.status} — ${body.slice(0, 200)}`,
+      `[whoop] token refresh failed ${exchange.status} (${exchange.method}) — ${exchange.body.slice(0, 200)}`,
     );
     // A concurrent refresh may already have rotated it — re-read once.
     const fresh = await readFresh(db, userId);
     if (fresh) return fresh;
-    throw new Error(`WHOOP token refresh failed (${res.status}).`);
+    throw new Error(`WHOOP token refresh failed (${exchange.status}).`);
   }
 
-  const tok = (await res.json()) as {
-    access_token: string;
-    refresh_token: string;
-    expires_in: number;
-  };
+  const tok = exchange.token;
   const expiresAt = new Date(Date.now() + tok.expires_in * 1000).toISOString();
 
   const { data: won } = await db
