@@ -104,9 +104,14 @@ export async function syncWhoop(
   ]);
 
   const rows = assembleRecoveryRows(userId, cycles, recoveries, sleeps);
-  console.log(
-    `[whoop] sync: fetched cycles=${cycles.length} recoveries=${recoveries.length} sleeps=${sleeps.length} → rows=${rows.length}`,
-  );
+  const partial = rows.filter((r) => r.recovery_pct == null && r.strain != null);
+  const summary = `cycles=${cycles.length} recoveries=${recoveries.length} sleeps=${sleeps.length} rows=${rows.length} datesWithoutRecovery=${partial.map((r) => r.date).join(",") || "none"}`;
+  console.log(`[whoop] sync: ${summary}`);
+  try {
+    await db.from("whoop_debug").insert({ outcome: "sync_counts", detail: summary.slice(0, 500) });
+  } catch {
+    // diagnostics are best-effort
+  }
   if (rows.length) {
     const { error } = await db
       .from("recovery")
