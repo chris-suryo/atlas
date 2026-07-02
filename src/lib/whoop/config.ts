@@ -3,7 +3,9 @@
 
 export const WHOOP_AUTH_URL = "https://api.prod.whoop.com/oauth/oauth2/auth";
 export const WHOOP_TOKEN_URL = "https://api.prod.whoop.com/oauth/oauth2/token";
-export const WHOOP_API_BASE = "https://api.prod.whoop.com";
+// The data API (as opposed to OAuth) lives under /developer — e.g.
+// /developer/v2/cycle, /developer/v2/recovery. Missing this prefix 404s.
+export const WHOOP_API_BASE = "https://api.prod.whoop.com/developer";
 
 // `offline` is required to receive a (rotating) refresh token, and must be
 // re-requested on every refresh to keep getting one.

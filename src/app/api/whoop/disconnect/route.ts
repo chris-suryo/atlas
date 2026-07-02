@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { WHOOP_API_BASE, whoopEnv } from "@/lib/whoop/config";
+import { WHOOP_API_BASE } from "@/lib/whoop/config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,20 +27,16 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
 
   if (conn?.access_token) {
-    const { clientId, clientSecret } = whoopEnv();
+    // WHOOP has no RFC 7009 /revoke — its custom endpoint is DELETE
+    // .../developer/v2/user/access with the user's access token as Bearer auth.
     try {
-      await fetch(`${WHOOP_API_BASE}/oauth/oauth2/revoke`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      await fetch(`${WHOOP_API_BASE}/v2/user/access`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${conn.access_token}` },
         cache: "no-store",
-        body: new URLSearchParams({
-          token: conn.access_token as string,
-          client_id: clientId,
-          client_secret: clientSecret,
-        }),
       });
     } catch {
-      // best-effort revoke; we delete regardless
+      // best-effort revoke; we delete our row regardless
     }
   }
 
