@@ -95,6 +95,10 @@ export default function LogScreen({
   const [mode, setMode] = useState<"plan" | "now">("plan");
   const [started, setStarted] = useState<boolean>(active?.started ?? false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [failedSetIndices, setFailedSetIndices] = useState<
+    Record<string, number[]>
+  >({});
 
   const workoutIdRef = useRef<string | null>(active?.id ?? null);
   const chainRef = useRef<Promise<void>>(Promise.resolve());
@@ -103,9 +107,11 @@ export default function LogScreen({
   const current = currentIndex != null ? (queue[currentIndex] ?? null) : null;
 
   function chain(fn: () => Promise<void>) {
+    setPendingCount((n) => n + 1);
     chainRef.current = chainRef.current
       .then(fn)
-      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setPendingCount((n) => n - 1));
   }
 
   /** Log a set to the active exercise (workout already exists from the add). */
@@ -113,6 +119,7 @@ export default function LogScreen({
     if (currentIndex == null || !focus) return;
     const startIndex = queue[currentIndex].sets.length;
     const exId = queue[currentIndex].exercise.id;
+    const rowId = queue[currentIndex].rowId;
     const f = focus;
     setQueue((prev) =>
       prev.map((it, i) =>
@@ -135,9 +142,31 @@ export default function LogScreen({
           },
         ],
       });
-      if (res.ok) workoutIdRef.current = res.workoutId;
-      else setError(res.error);
+      if (res.ok) {
+        workoutIdRef.current = res.workoutId;
+      } else {
+        setError(res.error);
+        setFailedSetIndices((prev) => ({
+          ...prev,
+          [rowId]: [...(prev[rowId] ?? []), startIndex],
+        }));
+      }
     });
+  }
+
+  /** A failed set only ever existed locally — dropping it needs no server call. */
+  function removeFailedSet(rowId: string, setIndex: number) {
+    setQueue((prev) =>
+      prev.map((it) =>
+        it.rowId === rowId
+          ? { ...it, sets: it.sets.filter((_, i) => i !== setIndex) }
+          : it,
+      ),
+    );
+    setFailedSetIndices((prev) => ({
+      ...prev,
+      [rowId]: (prev[rowId] ?? []).filter((i) => i !== setIndex),
+    }));
   }
 
   /** Plan-first: queue an exercise and STAY in Plan (no jump to Now). */
@@ -163,6 +192,7 @@ export default function LogScreen({
       });
       if (!res.ok) {
         setError(res.error);
+        setQueue((prev) => prev.filter((it) => it.rowId !== tempRowId));
         return;
       }
       workoutIdRef.current = res.workoutId;
@@ -202,7 +232,15 @@ export default function LogScreen({
       const wid = workoutIdRef.current;
       if (!wid) return;
       const res = await startWorkout({ workoutId: wid });
-      if (!res.ok) setError(res.error);
+      if (!res.ok) {
+        setError(res.error);
+        setStarted(false);
+        setQueue((prev) =>
+          prev.map((it, i) => (i === target ? { ...it, status: "queued" } : it)),
+        );
+        setCurrentIndex(null);
+        setMode("plan");
+      }
     });
   }
 
@@ -223,7 +261,18 @@ export default function LogScreen({
     if (rowId && !isTemp(rowId)) {
       chain(async () => {
         const res = await finishPlanExercise({ rowId });
-        if (!res.ok) setError(res.error);
+        if (!res.ok) {
+          setError(res.error);
+          setQueue((prev) =>
+            prev.map((it, i) => {
+              if (i === idx) return { ...it, status: "now" as const };
+              if (i === nq) return { ...it, status: "queued" as const };
+              return it;
+            }),
+          );
+          setCurrentIndex(idx);
+          setMode("now");
+        }
       });
     }
   }
@@ -245,6 +294,8 @@ export default function LogScreen({
 
   function removeFromQueue(i: number) {
     const rowId = queue[i]?.rowId;
+    const removedItem = queue[i];
+    const prevCurrentIndex = currentIndex;
     setQueue((prev) => prev.filter((_, idx) => idx !== i));
     setCurrentIndex((ci) => {
       if (ci == null) return ci;
@@ -254,7 +305,15 @@ export default function LogScreen({
     if (rowId && !isTemp(rowId)) {
       chain(async () => {
         const res = await removeFromPlan({ rowId });
-        if (!res.ok) setError(res.error);
+        if (!res.ok) {
+          setError(res.error);
+          setQueue((prev) => {
+            const next = [...prev];
+            next.splice(i, 0, removedItem);
+            return next;
+          });
+          setCurrentIndex(prevCurrentIndex);
+        }
       });
     }
   }
@@ -263,6 +322,9 @@ export default function LogScreen({
     const from = queue.findIndex((q) => q.rowId === activeId);
     const to = queue.findIndex((q) => q.rowId === overId);
     if (from === -1 || to === -1 || from === to) return;
+    const prevQueue = queue;
+    const prevCurrentRowId =
+      currentIndex != null ? (queue[currentIndex]?.rowId ?? null) : null;
     const next = arrayMove(queue, from, to);
     setQueue(next);
     setCurrentIndex((ci) => {
@@ -276,7 +338,15 @@ export default function LogScreen({
       .filter((r) => !isTemp(r.id));
     chain(async () => {
       const res = await reorderPlan({ rows });
-      if (!res.ok) setError(res.error);
+      if (!res.ok) {
+        setError(res.error);
+        setQueue(prevQueue);
+        setCurrentIndex((ci) => {
+          if (prevCurrentRowId == null) return ci;
+          const i = prevQueue.findIndex((q) => q.rowId === prevCurrentRowId);
+          return i === -1 ? ci : i;
+        });
+      }
     });
   }
 
@@ -388,7 +458,7 @@ export default function LogScreen({
           suggested={suggested.slice(0, 2)}
           onSelect={(ex) => queueExercise(ex)}
           onShorthand={onShorthand}
-          onCreate={(name) => void onCreate(name)}
+          onCreate={onCreate}
           onBack={() => setScreen(queue.length ? "session" : "focus")}
         />
       )}
@@ -442,6 +512,9 @@ export default function LogScreen({
                 last={lastByExercise[current.exercise.id]}
                 onLogSet={onLogSet}
                 onFinish={finishExercise}
+                failedSetIndices={failedSetIndices[current.rowId] ?? []}
+                onRemoveFailedSet={(i) => removeFailedSet(current.rowId, i)}
+                saving={pendingCount > 0}
               />
             ) : (
               <PlanView
@@ -456,12 +529,12 @@ export default function LogScreen({
                 onAddSuggestion={(ex) => queueExercise(ex)}
                 onStart={beginWorkout}
                 onFinish={() => {
-                  setScreen("recap");
                   chain(async () => {
                     const wid = workoutIdRef.current;
                     if (!wid) return;
                     const res = await finishWorkout({ workoutId: wid });
-                    if (!res.ok) setError(res.error);
+                    if (res.ok) setScreen("recap");
+                    else setError(res.error);
                   });
                 }}
               />

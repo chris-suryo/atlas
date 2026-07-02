@@ -97,6 +97,7 @@ All defined in `atlas-theme.css`. Semantic names, so components read intent, not
 - **Hairline rows** (logged sets, Up next): `13px` vertical padding, `1px` top border in `--color-line`.
 - **The current-set block is vertically centered** in the scrollable region — not pinned to the top — so the screen breathes and doesn't leave a void above the input.
 - **iPhone 16 Pro target:** ~19.5:9. Respect safe-area insets top and bottom (`viewport-fit=cover` is already set); the Dynamic Island and home indicator are OS chrome, not app-drawn.
+- **Bottom safe-area convention:** only the global `BottomNav` reserves `env(safe-area-inset-bottom)` — it's the one element that actually touches the physical bottom edge. Every other pinned-bottom bar (Log's Now/keypad, Plan's Start/Finish, Today's Start/Resume, Trends' sign-out) sits *above* `BottomNav` and uses a plain fixed padding; reserving the inset a second time double-counts it and reads as a too-tall gap.
 
 ---
 

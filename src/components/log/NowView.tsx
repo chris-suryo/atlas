@@ -43,12 +43,18 @@ export default function NowView({
   last,
   onLogSet,
   onFinish,
+  failedSetIndices = [],
+  onRemoveFailedSet,
+  saving = false,
 }: {
   exercise: ExerciseLite;
   sets: SetShape[];
   last?: LastPerf;
   onLogSet: (s: SetShape) => void;
   onFinish: () => void;
+  failedSetIndices?: number[];
+  onRemoveFailedSet?: (index: number) => void;
+  saving?: boolean;
 }) {
   const [draft, setDraft] = useState<Draft>(() => primeFrom(last));
   const [field, setField] = useState<"weight" | "reps">("weight");
@@ -70,7 +76,8 @@ export default function NowView({
   const prog = progression(w, r, last);
   const restElapsed = restStartedAt != null ? Math.max(0, nowMs - restStartedAt) : 0;
   const setElapsedMs = setRunStart != null ? Math.max(0, nowMs - setRunStart) : 0;
-  const canLog = draft.weight.trim() !== "" || draft.reps.trim() !== "";
+  const canLog =
+    (draft.weight.trim() !== "" || draft.reps.trim() !== "") && !saving;
 
   function onDigit(d: string) {
     setDraft((prev) => {
@@ -239,26 +246,41 @@ export default function NowView({
 
         {sets.length > 0 && (
           <div className="mt-7">
-            {sets.map((s, i) => (
-              <div
-                key={i}
-                className="flex items-center border-t border-line py-3 text-sm"
-              >
-                <span className="w-14 text-text-faint">Set {i + 1}</span>
-                <span className="flex-1 text-text-muted">
-                  {fmtWeight(s.weight_lbs)} × {s.reps ?? "—"}
-                </span>
-                {s.duration_sec != null && (
-                  <span className="mr-4 text-text-faint tabular-nums">
-                    {fmtClock(s.duration_sec * 1000)}
+            {sets.map((s, i) => {
+              const failed = failedSetIndices.includes(i);
+              return (
+                <div
+                  key={i}
+                  className="flex items-center border-t border-line py-3 text-sm"
+                >
+                  <span className="w-14 text-text-faint">Set {i + 1}</span>
+                  <span
+                    className={`flex-1 ${failed ? "text-red-400" : "text-text-muted"}`}
+                  >
+                    {fmtWeight(s.weight_lbs)} × {s.reps ?? "—"}
                   </span>
-                )}
-                {s.rpe != null && (
-                  <span className="mr-4 text-text-faint">RPE {s.rpe}</span>
-                )}
-                <IconCheck size={16} className="text-accent" />
-              </div>
-            ))}
+                  {s.duration_sec != null && (
+                    <span className="mr-4 text-text-faint tabular-nums">
+                      {fmtClock(s.duration_sec * 1000)}
+                    </span>
+                  )}
+                  {s.rpe != null && (
+                    <span className="mr-4 text-text-faint">RPE {s.rpe}</span>
+                  )}
+                  {failed ? (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveFailedSet?.(i)}
+                      className="text-xs text-red-400"
+                    >
+                      Not saved — remove
+                    </button>
+                  ) : (
+                    <IconCheck size={16} className="text-accent" />
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -280,14 +302,14 @@ export default function NowView({
           canLog={canLog}
         />
       ) : (
-        <div className="border-t border-line px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3.5">
+        <div className="border-t border-line px-5 pb-3 pt-3.5">
           <button
             type="button"
             onClick={logSet}
             disabled={!canLog}
             className="w-full rounded-control bg-accent px-4 py-3.5 text-base font-medium text-accent-ink transition-opacity disabled:opacity-40"
           >
-            Log set
+            {saving ? "Logging…" : "Log set"}
           </button>
         </div>
       )}

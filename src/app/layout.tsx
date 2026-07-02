@@ -6,7 +6,7 @@ const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   weight: ["400", "500"],
   variable: "--font-space-grotesk",
-  display: "swap",
+  display: "optional",
 });
 
 export const metadata: Metadata = {
@@ -46,8 +46,8 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${spaceGrotesk.variable} h-full`}>
-      <body className="min-h-full antialiased">{children}</body>
+    <html lang="en" className={`${spaceGrotesk.variable} h-dvh overflow-hidden`}>
+      <body className="h-dvh overflow-hidden antialiased">{children}</body>
     </html>
   );
 }

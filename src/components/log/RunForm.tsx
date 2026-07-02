@@ -171,7 +171,7 @@ export default function RunForm({
         </div>
       </div>
 
-      <div className="px-7 py-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+      <div className="px-7 py-3.5">
         <button
           type="button"
           onClick={submit}

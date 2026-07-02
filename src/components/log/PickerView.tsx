@@ -35,10 +35,11 @@ export default function PickerView({
   suggested: { ex: ExerciseLite; reason: string }[];
   onSelect: (ex: ExerciseLite) => void;
   onShorthand: (line: string) => void;
-  onCreate: (name: string) => void;
+  onCreate: (name: string) => Promise<void> | void;
   onBack: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const [creating, setCreating] = useState(false);
   const q = query.trim().toLowerCase();
 
   const pool =
@@ -152,11 +153,22 @@ export default function PickerView({
         {showCreate && (
           <button
             type="button"
-            onClick={() => onCreate(query.trim())}
-            className="flex w-full items-center gap-2.5 border-t border-line py-3.5 text-left text-text-muted"
+            onClick={async () => {
+              if (creating) return;
+              setCreating(true);
+              try {
+                await onCreate(query.trim());
+              } finally {
+                setCreating(false);
+              }
+            }}
+            disabled={creating}
+            className="flex w-full items-center gap-2.5 border-t border-line py-3.5 text-left text-text-muted disabled:opacity-40"
           >
             <IconPlus size={16} className="shrink-0" />
-            <span className="text-[15px]">Create “{query.trim()}”</span>
+            <span className="text-[15px]">
+              {creating ? "Creating…" : `Create "${query.trim()}"`}
+            </span>
           </button>
         )}
       </div>

@@ -20,7 +20,7 @@ export default function NumericKeypad({
   canLog: boolean;
 }) {
   return (
-    <div className="border-t border-line px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3.5">
+    <div className="border-t border-line px-5 pb-3 pt-3.5">
       <div className="flex items-center justify-between px-2 pb-2 text-xs text-text-faint">
         <span>
           Editing <span className="text-accent">{field}</span>

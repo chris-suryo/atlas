@@ -232,7 +232,7 @@ export default function PlanView({
         </button>
       </div>
 
-      <div className="border-t border-line px-7 py-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+      <div className="border-t border-line px-7 py-3.5">
         {started ? (
           <button
             type="button"

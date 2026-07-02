@@ -105,13 +105,46 @@ Full plan: `/root/.claude/plans/project-atlas-a-sparkling-newt.md`.
   fallback for pre-installed-Chromium containers) but **not run end-to-end** in the authoring
   session — that container's network policy blocked outbound access to both Supabase and the
   Vercel deployment, unrelated to app correctness.
-  **Found, not fixed this pass:** no sign-out control exists anywhere in the UI
-  (`/auth/signout` is POST-only and unlinked from any page); a few save flows (e.g.
-  `NowView`'s `logSet`) don't await/handle their server-action call, the same shape of bug
-  `RunForm` had — worth a systematic pass. **Backlog unchanged otherwise:** Trends tab, WHOOP
-  webhooks/run-import/body-weight, ring detail pages, a full whole-app security/perf audit
-  (this pass covered the two reported bugs plus the newest/highest-risk WHOOP surface, not
-  everything).
+  **Found, not fixed that pass:** no sign-out control anywhere in the UI; a few save flows
+  (e.g. `NowView`'s `logSet`) don't await/handle their server-action call, the same shape of
+  bug `RunForm` had. **Both fixed in the reliability pass below.**
+- **Reliability + layout hardening pass (2026-07-02):** a full-codebase audit (bug sweep,
+  security posture, infra/testing/feature-completeness, plus a targeted root-cause on a
+  reported viewport bug) turned up a tiered backlog; this pass shipped **Tier 1 (data-integrity
+  bugs)** and **Tier 2 (layout/UX)** — full backlog + rationale in the plan file.
+  **Tier 1:** every optimistic local-state update in `LogScreen.tsx`/`TodayScreen.tsx` that
+  preceded its server-action call now reconciles on failure instead of silently drifting from
+  the DB — `queueExercise`, `beginWorkout`, `finishExercise`, `removeFromQueue`, `reorder` all
+  revert their optimistic change and surface the existing error banner if the write fails. The
+  **ankle-pain popover** (`TodayScreen.tsx`, previously 100% silent — no error path at all) now
+  awaits, serializes rapid taps, rolls back to the last confirmed value on failure, and shows an
+  inline error. The **Finish-workout → recap navigation** (highest-severity find: recap could
+  show before `finishWorkout` actually persisted, risking a false-completion signal and a stuck
+  one-active-workout slot) now awaits the save and only navigates on success. **`NowView`'s
+  logged sets** get a per-row pending/failed state instead of relying solely on the generic
+  banner — a failed set is visibly flagged ("Not saved — remove") instead of looking identical
+  to a saved one. **Log set** and the Picker's **Create exercise** button both now disable
+  while their write is in flight, closing the double-tap duplicate-row risk.
+  **Tier 2:** fixed the recurring "blank gap under Road to Cambridge, needs a manual swipe to
+  snap" bug — root cause was that nothing in the app ever forced iOS WebKit to repaint after
+  launch/resume/font-swap (`src/components/ViewportNudge.tsx`, mounted once in `(app)/layout.tsx`,
+  nudges a reflow on `visualViewport`/`pageshow`/`visibilitychange`), plus the font's
+  `display:"swap"` (a likely reflow trigger) → `"optional"`, `<html>`/`<body>` now consistently
+  `h-dvh` instead of the stale `h-full`, and `TodayScreen`'s scroll container forced onto its
+  own compositing layer. Fixed the bottom-tab-bar-feels-tall complaint — `BottomNav` itself was
+  never actually oversized (~84px, matching Apple's ~83pt standard); a **duplicate**
+  `env(safe-area-inset-bottom)` reservation on the screen content sitting above it was
+  double-counting the inset in 6 files (`TodayScreen`, `PlanView`, `RecapView`, `NowView`,
+  `RunForm`, `NumericKeypad`) — **convention going forward: only `BottomNav` ever reserves that
+  inset**; every other pinned-bottom bar uses a plain fixed padding. Added the **sign-out
+  control** (Trends screen, plain form → `/auth/signout`).
+  **Explicitly deferred this pass (Chris's call, not overlooked):** a backup strategy for the
+  free-tier Supabase project, and separating the Playwright test account into its own Supabase
+  project — both accepted as-is for now, do not re-raise. **Backlog (Tiers 3–5, unscheduled):**
+  security headers + timing-safe secret comparisons + WHOOP token encryption (considered,
+  deprioritized) + live RLS re-verify; CI/CD, stale `.env.example`, Node version pinning, root
+  error boundaries, WHOOP cron dead-man's-switch, PWA offline support; Trends tab charts, WHOOP
+  webhooks/run-import/body-weight, ring detail pages. Full detail in the plan file.
 
 ## Stack gotchas
 - **Next.js 16**: middleware is renamed **Proxy** — `src/proxy.ts` (exports `proxy` + `config`).

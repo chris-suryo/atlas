@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { localDateISO } from "@/app/(app)/log/util";
 import type { Focus } from "@/app/(app)/log/types";
@@ -94,6 +94,9 @@ export default function TodayScreen({
   const [todayPain, setTodayPain] = useState<number | null>(
     () => ankleRecent.find((a) => a.date === localDateISO())?.pain_0_10 ?? null,
   );
+  const [ankleError, setAnkleError] = useState<string | null>(null);
+  const confirmedPainRef = useRef(todayPain);
+  const ankleChainRef = useRef<Promise<void>>(Promise.resolve());
 
   const options = [recommendation.focus, ...recommendation.alternates].filter(
     (f, i, a) => a.indexOf(f) === i,
@@ -108,7 +111,21 @@ export default function TodayScreen({
 
   function tapAnkle(v: number) {
     setTodayPain(v);
-    void logAnklePain({ date: todayISO, pain: v });
+    setAnkleError(null);
+    ankleChainRef.current = ankleChainRef.current.then(async () => {
+      try {
+        const res = await logAnklePain({ date: todayISO, pain: v });
+        if (res.ok) {
+          confirmedPainRef.current = v;
+        } else {
+          setTodayPain(confirmedPainRef.current);
+          setAnkleError(res.error);
+        }
+      } catch {
+        setTodayPain(confirmedPainRef.current);
+        setAnkleError("Could not save — try again.");
+      }
+    });
   }
   function start() {
     router.push(activeFocus ? "/log" : `/log?focus=${selected}`);
@@ -152,7 +169,7 @@ export default function TodayScreen({
         )}
       </div>
 
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-7 pb-4 pt-3">
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-7 pb-4 pt-3 [transform:translateZ(0)]">
         {whoopNotice && WHOOP_NOTICE[whoopNotice] && (
           <p
             className={`rounded-control px-3 py-2 text-center text-[11px] ${
@@ -182,12 +199,19 @@ export default function TodayScreen({
             reason={recommendation.reason}
             onSelect={setSelected}
           />
-          <AnkleRing pain={todayPain} avg={ankleAvg} onTap={tapAnkle} />
+          <div className="flex flex-col items-end gap-1">
+            <AnkleRing pain={todayPain} avg={ankleAvg} onTap={tapAnkle} />
+            {ankleError && (
+              <span className="max-w-[7rem] text-right text-[10px] text-red-400">
+                {ankleError}
+              </span>
+            )}
+          </div>
         </div>
         <MileageChart buckets={buckets} daysLeft={daysLeft} />
       </div>
 
-      <div className="border-t border-line px-7 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+      <div className="shrink-0 border-t border-line px-7 pt-3 pb-3.5">
         <button
           type="button"
           onClick={start}

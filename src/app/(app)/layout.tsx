@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/supabase/server";
 import BottomNav from "@/components/BottomNav";
+import ViewportNudge from "@/components/ViewportNudge";
 
 // Uses cookies() → always rendered per-request. Explicit for clarity.
 export const dynamic = "force-dynamic";
@@ -15,6 +16,7 @@ export default async function AppLayout({
 
   return (
     <div className="mx-auto flex h-dvh max-w-md flex-col overflow-hidden">
+      <ViewportNudge />
       <main className="min-h-0 flex-1">{children}</main>
       <BottomNav />
     </div>
